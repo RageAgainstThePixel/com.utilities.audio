@@ -38,7 +38,7 @@ namespace Utilities.Audio
             RecordingManager.EnableDebug = true;
 
             // Set the default save location.
-            RecordingManager.DefaultSaveLocation = $"{Application.streamingAssetsPath}/Resources/Recordings";
+            RecordingManager.DefaultSaveLocation = $"{Application.streamingAssetsPath}/Recordings";
 
             // Set the max recording length (min 30 seconds, max 300 seconds or 5 min)
             RecordingManager.MaxRecordingLength = 60;

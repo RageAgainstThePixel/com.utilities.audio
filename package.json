@@ -3,7 +3,7 @@
   "displayName": "Utilities.Audio",
   "description": "A simple package for audio extensions and utilities.",
   "keywords": [],
-  "version": "1.0.0-preview.2",
+  "version": "1.0.0-preview.3",
   "unity": "2021.3",
   "documentationUrl": "https://github.com/StephenHodgson/com.utilities.audio#documentation",
   "changelogUrl": "https://github.com/StephenHodgson/com.utilities.audio/releases",
