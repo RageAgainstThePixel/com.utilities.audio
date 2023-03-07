@@ -1,5 +1,5 @@
 {
-    "name": "ProjectScope.ProjectName.Editor",
+    "name": "Utilities.Audio.Editor",
     "references": [],
     "includePlatforms": [
         "Editor"
