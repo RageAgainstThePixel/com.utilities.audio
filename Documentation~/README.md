@@ -10,7 +10,7 @@ A simple package for audio extensions and utilities in the [Unity](https://unity
 
 - Open your Unity project settings
 - Select the `Package Manager`
-![scoped-registries](https://github.com/StephenHodgson/com.utilities.audio/raw/main/Utilities.Audio/Packages/com.utilities.audio/Documentation~/images/package-manager-scopes.png)
+![scoped-registries](images/package-manager-scopes.png)
 - Add the OpenUPM package registry:
   - `Name: OpenUPM`
   - `URL: https://package.openupm.com`
@@ -23,7 +23,7 @@ A simple package for audio extensions and utilities in the [Unity](https://unity
 ### Via Unity Package Manager and Git url
 
 - Open your Unity Package Manager
-- Add package from git url: `https://github.com/StephenHodgson/com.utilities.audio.git#upm`
+- Add package from git url: `https://github.com/RageAgainstThePixel/com.utilities.audio.git#upm`
 
 ## Documentation
 

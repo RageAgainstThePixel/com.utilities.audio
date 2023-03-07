@@ -11,6 +11,7 @@ namespace Utilities.Audio
     /// A simple implementation of a recording behaviour.
     /// </summary>
     /// <typeparam name="T"><see cref="IEncoder"/> to use for recording.</typeparam>
+    [RequireComponent(typeof(AudioSource))]
     public abstract class AbstractRecordingBehaviour<T> : MonoBehaviour where T : IEncoder
     {
         [SerializeField]
