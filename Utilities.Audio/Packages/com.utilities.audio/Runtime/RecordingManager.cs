@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Utilities.Async;
-using Utilities.Encoding;
 
 namespace Utilities.Audio
 {
@@ -43,6 +42,8 @@ namespace Utilities.Audio
                 }
             }
         }
+
+        public static int Frequency { get; set; } = 48000;
 
         private static bool isRecording;
 
@@ -178,12 +179,11 @@ namespace Utilities.Audio
                 saveDirectory = DefaultSaveLocation;
             }
 
-            var clip = Microphone.Start(null, false, MaxRecordingLength, 44100);
+            var clip = Microphone.Start(null, false, MaxRecordingLength, Frequency);
 
             if (EnableDebug)
             {
                 Microphone.GetDeviceCaps(null, out var minFreq, out var maxFreq);
-
                 Debug.Log($"[{nameof(RecordingManager)}] Recording devices: {string.Join(", ", Microphone.devices)} | minFreq: {minFreq} | maxFreq {maxFreq} | clip freq: {clip.frequency} | samples: {clip.samples}");
             }
 
@@ -210,7 +210,7 @@ namespace Utilities.Audio
             }
             catch (Exception e)
             {
-                Debug.LogError($"[{nameof(RecordingManager)}] Failed to record {clipName}!\n{e}");
+                Debug.LogError($"[{nameof(RecordingManager)}] Failed to record {clip.name}!\n{e}");
             }
             finally
             {

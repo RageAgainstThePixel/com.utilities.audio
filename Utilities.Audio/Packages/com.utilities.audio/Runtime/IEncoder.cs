@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Utilities.Encoding
+namespace Utilities.Audio
 {
     public interface IEncoder
     {
