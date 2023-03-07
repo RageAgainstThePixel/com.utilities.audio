@@ -1,9 +1,10 @@
 {
-    "name": "ProjectScope.ProjectName.Editor",
-    "references": [],
-    "includePlatforms": [
-        "Editor"
+    "name": "Utilities.Audio",
+    "rootNamespace": "Utilities.Audio",
+    "references": [
+        "GUID:a6609af893242c7438d701ddd4cce46a"
     ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
