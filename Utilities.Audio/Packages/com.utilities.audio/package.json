@@ -16,7 +16,11 @@
     "name": "Stephen Hodgson",
     "url": "https://github.com/StephenHodgson"
   },
-  "dependencies": {},
+  "dependencies": {
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.unitywebrequestaudio": "1.0.0",
+    "com.utilities.async": "1.2.0"
+  },
   "publishConfig": {
     "registry": "https://package.openupm.com"
   }
