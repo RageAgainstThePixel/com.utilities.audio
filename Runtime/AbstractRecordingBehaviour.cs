@@ -20,6 +20,9 @@ namespace Utilities.Audio
         [SerializeField]
         private KeyCode recordingKey = KeyCode.Space;
 
+        [SerializeField]
+        private bool debug = false;
+
         private CancellationTokenSource gameObjectCts;
 
         private void OnValidate()
@@ -35,7 +38,7 @@ namespace Utilities.Audio
         private void Start()
         {
             // Enable debugging
-            RecordingManager.EnableDebug = true;
+            RecordingManager.EnableDebug = debug;
 
             // Set the default save location.
             RecordingManager.DefaultSaveLocation = $"{Application.streamingAssetsPath}/Recordings";
