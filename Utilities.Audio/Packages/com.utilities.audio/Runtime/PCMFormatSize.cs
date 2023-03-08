@@ -2,8 +2,9 @@
 
 namespace Utilities.Audio
 {
-    public static class Constants
+    public enum PCMFormatSize
     {
-        public const float RescaleFactor = 32768f;
+        EightBit = 1,
+        SixteenBit = 2
     }
 }
