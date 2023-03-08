@@ -3,14 +3,14 @@
   "displayName": "Utilities.Audio",
   "description": "A simple package for audio extensions and utilities.",
   "keywords": [],
-  "version": "1.0.0-preview.4",
+  "version": "1.0.0",
   "unity": "2021.3",
-  "documentationUrl": "https://github.com/StephenHodgson/com.utilities.audio#documentation",
-  "changelogUrl": "https://github.com/StephenHodgson/com.utilities.audio/releases",
+  "documentationUrl": "https://github.com/RageAgainstThePixel/com.utilities.audio#documentation",
+  "changelogUrl": "https://github.com/RageAgainstThePixel/com.utilities.audio/releases",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "repository": "https://github.com/StephenHodgson/com.utilities.audio.git"
+    "repository": "https://github.com/RageAgainstThePixel/com.utilities.audio.git"
   },
   "author": {
     "name": "Stephen Hodgson",
