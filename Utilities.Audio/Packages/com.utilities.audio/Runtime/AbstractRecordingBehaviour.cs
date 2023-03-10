@@ -21,7 +21,22 @@ namespace Utilities.Audio
         private KeyCode recordingKey = KeyCode.Space;
 
         [SerializeField]
-        private bool debug = false;
+        private bool debug;
+
+        public bool Debug
+        {
+            get => debug;
+            set => debug = value;
+        }
+
+        [SerializeField]
+        private string defaultSaveLocation;
+
+        public string DefaultSaveLocation
+        {
+            get => defaultSaveLocation;
+            set => defaultSaveLocation = value;
+        }
 
         private CancellationTokenSource gameObjectCts;
 
@@ -30,6 +45,11 @@ namespace Utilities.Audio
             if (audioSource == null)
             {
                 audioSource = GetComponent<AudioSource>();
+            }
+
+            if (string.IsNullOrWhiteSpace(defaultSaveLocation))
+            {
+                defaultSaveLocation = $"{Application.streamingAssetsPath}/Recordings";
             }
         }
 
@@ -41,7 +61,7 @@ namespace Utilities.Audio
             RecordingManager.EnableDebug = debug;
 
             // Set the default save location.
-            RecordingManager.DefaultSaveLocation = $"{Application.streamingAssetsPath}/Recordings";
+            RecordingManager.DefaultSaveLocation = defaultSaveLocation;
 
             // Set the max recording length (min 30 seconds, max 300 seconds or 5 min)
             RecordingManager.MaxRecordingLength = 60;
@@ -79,7 +99,12 @@ namespace Utilities.Audio
         private void OnClipRecorded(Tuple<string, AudioClip> recording)
         {
             var (path, newClip) = recording;
-            Debug.Log($"Recording saved at: {path}");
+
+            if (debug)
+            {
+                UnityEngine.Debug.Log($"Recording saved at: {path}");
+            }
+
             audioSource.PlayOneShot(newClip);
         }
 
@@ -89,12 +114,12 @@ namespace Utilities.Audio
             {
                 if (RecordingManager.IsRecording)
                 {
-                    Debug.Log("Recording in progress");
+                    UnityEngine.Debug.LogWarning("Recording in progress");
                 }
 
                 if (RecordingManager.IsProcessing)
                 {
-                    Debug.Log("Processing last recording");
+                    UnityEngine.Debug.LogWarning("Processing last recording");
                 }
 
                 return;
@@ -105,7 +130,12 @@ namespace Utilities.Audio
                 // Starts the recording process
                 var recording = await RecordingManager.StartRecordingAsync<T>(cancellationToken: gameObjectCts.Token);
                 var (path, newClip) = recording;
-                Debug.Log($"Recording saved at: {path}");
+
+                if (debug)
+                {
+                    UnityEngine.Debug.Log($"Recording saved at: {path}");
+                }
+
                 audioSource.clip = newClip;
             }
             catch (TaskCanceledException)
@@ -114,7 +144,7 @@ namespace Utilities.Audio
             }
             catch (Exception e)
             {
-                Debug.LogError(e);
+                UnityEngine.Debug.LogError(e);
             }
         }
     }
