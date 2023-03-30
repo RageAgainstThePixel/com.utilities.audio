@@ -106,6 +106,5 @@ namespace Utilities.Audio
             // Set the decoded audio data directly into the existing AudioClip
             audioClip.SetData(samples, 0);
         }
-
     }
 }
