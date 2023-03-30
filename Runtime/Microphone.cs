@@ -6,7 +6,6 @@ using UnityEngine;
 #if UNITY_WEBGL
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 #endif
 
 namespace Utilities.Audio
@@ -17,11 +16,11 @@ namespace Utilities.Audio
     public class Microphone
     {
 #if UNITY_WEBGL
-        [DllImport("__Internal")]
-        private static extern int GetNumberOfMicrophones();
+        // TODO Implement WebGL callbacks
 
-        [DllImport("__Internal")]
-        private static extern string GetMicrophoneDeviceName(int index);
+        private static int GetNumberOfMicrophones() { return 0; }
+
+        private static string GetMicrophoneDeviceName(int index) { return null; }
 
         private static readonly HashSet<string> deviceList = new HashSet<string>();
 #endif
