@@ -71,5 +71,41 @@ namespace Utilities.Audio
 
             return pcmData;
         }
+
+        /// <summary>
+        /// Decodes the raw PCM byte data and sets it to the <see cref="AudioClip"/>.<br/>
+        /// </summary>
+        /// <param name="audioClip"><see cref="AudioClip"/>.</param>
+        /// <param name="pcmData">PCM data to decode.</param>
+        /// <param name="size">Size of PCM sample data.</param>
+        public static void DecodeFromPCM(this AudioClip audioClip, byte[] pcmData, PCMFormatSize size = PCMFormatSize.EightBit)
+        {
+            var sampleCount = pcmData.Length / (sizeof(short) * (int)size);
+            var samples = new float[sampleCount];
+            var sampleIndex = 0;
+
+            switch (size)
+            {
+                case PCMFormatSize.EightBit:
+                    for (var i = 0; i < pcmData.Length; i++)
+                    {
+                        samples[sampleIndex++] = pcmData[i] / 128f - 1f;
+                    }
+                    break;
+                case PCMFormatSize.SixteenBit:
+                    for (var i = 0; i < pcmData.Length; i += 2)
+                    {
+                        var sample = (short)((pcmData[i + 1] << 8) | pcmData[i]);
+                        samples[sampleIndex++] = sample / (float)short.MaxValue;
+                    }
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(size), size, null);
+            }
+
+            // Set the decoded audio data directly into the existing AudioClip
+            audioClip.SetData(samples, 0);
+        }
+
     }
 }
