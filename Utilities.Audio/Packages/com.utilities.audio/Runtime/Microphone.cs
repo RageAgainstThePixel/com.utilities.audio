@@ -119,6 +119,7 @@ namespace Utilities.Audio
             audioBuffer = new float[frequency * lengthSec /* * channels*/];
             StartRecordingJS(StreamCallback, audioBuffer, audioBuffer.Length);
             currentClip = AudioClip.Create("WebMic_Recording", frequency * lengthSec, channels, frequency, false);
+            currentClip.SetData(audioBuffer, 0);
             return currentClip;
 #else
             return UnityEngine.Microphone.Start(deviceName, loop, lengthSec, frequency);
@@ -197,10 +198,7 @@ namespace Utilities.Audio
 
             foreach (var sample in samplingData)
             {
-                audioBuffer[currentPosition] = sample;
-                currentPosition++;
-
-                if (currentPosition == audioBuffer.Length)
+                if (currentPosition >= audioBuffer.Length)
                 {
                     if (loop)
                     {
@@ -211,6 +209,9 @@ namespace Utilities.Audio
                         break;
                     }
                 }
+
+                audioBuffer[currentPosition] = sample;
+                currentPosition++;
             }
 
             if (currentClip != null)

@@ -77,13 +77,14 @@ var Microphone = {
     return null;
   },
 
-  StartRecordingJS: function(functionPtr, bufferPtr, bufferSize) {
+  StartRecordingJS: function(functionPtr, bufferPtr) {
     if (navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
         var audioContext = document.microphoneContext.audioContext;
         var source = audioContext.createMediaStreamSource(stream);
         const numberOfInputChannels = 1; // Mono audio
         const numberOfOutputChannels = 1;
+        const bufferSize = 4096;
 
         if (audioContext.createScriptProcessor) {
           document.microphoneContext.recorder = audioContext.createScriptProcessor(bufferSize, numberOfInputChannels, numberOfOutputChannels);
@@ -92,10 +93,10 @@ var Microphone = {
         }
 
         document.microphoneContext.recorder.onaudioprocess = function (stream) {
-          var buffer = stream.inputBuffer.getChannelData(0);
-          var f32Buffer = new Float32Array(buffer);
-          HEAPF32.set(f32Buffer, bufferPtr >> 2); // using HEAPF32 and right shift 2
-          Module.dynCall_vii(functionPtr, buffer.length, bufferPtr);
+          var pcmData = stream.inputBuffer.getChannelData(0);
+          var floatBuffer = new Float32Array(pcmData.buffer);
+          Module.HEAPF32.set(floatBuffer, bufferPtr >> 2);
+          Module.dynCall_vii(functionPtr, pcmData.length, bufferPtr);
         };
 
         source.connect(document.microphoneContext.recorder);
