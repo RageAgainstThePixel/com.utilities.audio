@@ -21,13 +21,15 @@ namespace Utilities.Audio
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
         private static void Init()
         {
-            InitMicrophoneJS();
+            nativeBuffer = new float[1024];
+            var pcmDataBuffer = Marshal.UnsafeAddrOfPinnedArrayElement(nativeBuffer, 0);
+            InitMicrophoneJS(PCMReaderCallback, pcmDataBuffer, nativeBuffer.Length);
         }
 
         #region Interop
 
         [DllImport("__Internal")]
-        private static extern void InitMicrophoneJS();
+        private static extern void InitMicrophoneJS(Action<int> pcmReaderCallback, IntPtr buffer, int bufferSize);
 
         [DllImport("__Internal")]
         private static extern int GetNumberOfMicrophonesJS();
@@ -36,7 +38,10 @@ namespace Utilities.Audio
         private static extern string GetMicrophoneDeviceNameJS(int index);
 
         [DllImport("__Internal")]
-        private static extern void StartRecordingJS(Action<int, IntPtr> callback, float[] buffer, int bufferSize);
+        private static extern void StartRecordingJS(int channels);
+
+        [DllImport("__Internal")]
+        private static extern int GetCurrentMicrophonePositionJS();
 
         [DllImport("__Internal")]
         private static extern void StopRecordingJS();
@@ -47,10 +52,12 @@ namespace Utilities.Audio
         #endregion Interop
 
         private static bool loop;
-        private static int currentPosition;
-        private static int frequency = 41000;
+
         private static float[] audioBuffer;
+        private static float[] nativeBuffer;
+
         private static AudioClip currentClip;
+
         private static readonly HashSet<string> deviceList = new HashSet<string>();
 #endif
         private static bool isRecording;
@@ -113,13 +120,10 @@ namespace Utilities.Audio
             isRecording = true;
 #if UNITY_WEBGL //&& !UNITY_EDITOR
             Microphone.loop = loop;
-            Microphone.frequency = frequency;
-            var channels = 1;
-            currentPosition = 0;
-            audioBuffer = new float[frequency * lengthSec /* * channels*/];
-            StartRecordingJS(StreamCallback, audioBuffer, audioBuffer.Length);
-            currentClip = AudioClip.Create("WebMic_Recording", frequency * lengthSec, channels, frequency, false);
+            currentClip = AudioClip.Create("WebMic_Recording", frequency * lengthSec, 1, frequency, false);
+            audioBuffer = new float[frequency * lengthSec];
             currentClip.SetData(audioBuffer, 0);
+            StartRecordingJS(frequency);
             return currentClip;
 #else
             return UnityEngine.Microphone.Start(deviceName, loop, lengthSec, frequency);
@@ -167,8 +171,8 @@ namespace Utilities.Audio
             // When a value of zero is returned in the minFreq and maxFreq parameters,
             // this indicates that the device supports any frequency.
 #if UNITY_WEBGL //&& !UNITY_EDITOR
-            minFreq = frequency;
-            maxFreq = frequency;
+            minFreq = 8000;
+            maxFreq = 96000;
 #else
             UnityEngine.Microphone.GetDeviceCaps(deviceName, out minFreq, out maxFreq);
 #endif
@@ -182,7 +186,7 @@ namespace Utilities.Audio
         {
             if (!isRecording) { return 0; }
 #if UNITY_WEBGL //&& !UNITY_EDITOR
-            return currentPosition;
+            return GetCurrentMicrophonePositionJS();
 #else
             return UnityEngine.Microphone.GetPosition(deviceName);
 #endif
@@ -190,14 +194,18 @@ namespace Utilities.Audio
 
 #if UNITY_WEBGL //&& !UNITY_EDITOR
 
-        [MonoPInvokeCallback(typeof(Action<int, IntPtr>))]
-        private static void StreamCallback(int size, IntPtr dataPtr)
+        [MonoPInvokeCallback(typeof(Action<int>))]
+        private static void PCMReaderCallback(int size)
         {
-            var samplingData = new float[size];
-            Marshal.Copy(dataPtr, samplingData, 0, size);
+            if (currentClip == null) { return; }
 
-            foreach (var sample in samplingData)
+            var currentPosition = GetCurrentMicrophonePositionJS();
+
+            for (int i = 0; i < size; ++i)
             {
+                audioBuffer[currentPosition] = nativeBuffer[i];
+                currentPosition++;
+
                 if (currentPosition >= audioBuffer.Length)
                 {
                     if (loop)
@@ -209,15 +217,9 @@ namespace Utilities.Audio
                         break;
                     }
                 }
-
-                audioBuffer[currentPosition] = sample;
-                currentPosition++;
             }
 
-            if (currentClip != null)
-            {
-                currentClip.SetData(audioBuffer, 0);
-            }
+            currentClip.SetData(audioBuffer, 0);
         }
 #endif
     }
