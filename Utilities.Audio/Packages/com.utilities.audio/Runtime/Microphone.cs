@@ -29,7 +29,7 @@ namespace Utilities.Audio
         #region Interop
 
         [DllImport("__Internal")]
-        private static extern void InitMicrophoneJS(Action<int> pcmReaderCallback, IntPtr buffer, int bufferSize);
+        private static extern void InitMicrophoneJS(Action pcmReaderCallback, IntPtr buffer, int bufferSize);
 
         [DllImport("__Internal")]
         private static extern int GetNumberOfMicrophonesJS();
@@ -121,7 +121,7 @@ namespace Utilities.Audio
 #if UNITY_WEBGL //&& !UNITY_EDITOR
             Microphone.loop = loop;
             currentClip = AudioClip.Create("WebMic_Recording", frequency * lengthSec, 1, frequency, false);
-            audioBuffer = new float[frequency * lengthSec];
+            audioBuffer = new float[currentClip.samples];
             currentClip.SetData(audioBuffer, 0);
             StartRecordingJS(frequency);
             return currentClip;
@@ -194,32 +194,33 @@ namespace Utilities.Audio
 
 #if UNITY_WEBGL //&& !UNITY_EDITOR
 
-        [MonoPInvokeCallback(typeof(Action<int>))]
-        private static void PCMReaderCallback(int size)
+        [MonoPInvokeCallback(typeof(Action))]
+        private static void PCMReaderCallback()
         {
-            if (currentClip == null) { return; }
+            Debug.Log(nameof(PCMReaderCallback));
+            //if (currentClip == null) { return; }
 
-            var currentPosition = GetCurrentMicrophonePositionJS();
+            //var currentPosition = GetCurrentMicrophonePositionJS();
 
-            for (int i = 0; i < size; ++i)
-            {
-                audioBuffer[currentPosition] = nativeBuffer[i];
-                currentPosition++;
+            //for (int i = 0; i < size; ++i)
+            //{
+            //    audioBuffer[currentPosition] = nativeBuffer[i];
+            //    currentPosition++;
 
-                if (currentPosition >= audioBuffer.Length)
-                {
-                    if (loop)
-                    {
-                        currentPosition = 0;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
+            //    if (currentPosition >= audioBuffer.Length)
+            //    {
+            //        if (loop)
+            //        {
+            //            currentPosition = 0;
+            //        }
+            //        else
+            //        {
+            //            break;
+            //        }
+            //    }
+            //}
 
-            currentClip.SetData(audioBuffer, 0);
+            //currentClip.SetData(audioBuffer, 0);
         }
 #endif
     }
