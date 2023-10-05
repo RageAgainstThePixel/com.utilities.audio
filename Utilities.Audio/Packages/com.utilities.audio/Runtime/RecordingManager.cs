@@ -188,6 +188,7 @@ namespace Utilities.Audio
             }
 
             clip.name = (string.IsNullOrWhiteSpace(clipName) ? Guid.NewGuid().ToString() : clipName)!;
+            clipName = clip.name;
 
             lock (recordingLock)
             {
@@ -210,7 +211,7 @@ namespace Utilities.Audio
             }
             catch (Exception e)
             {
-                Debug.LogError($"[{nameof(RecordingManager)}] Failed to record {clip.name}!\n{e}");
+                Debug.LogError($"[{nameof(RecordingManager)}] Failed to record {clipName}!\n{e}");
             }
             finally
             {
