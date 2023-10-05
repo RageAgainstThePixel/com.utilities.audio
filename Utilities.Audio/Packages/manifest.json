@@ -4,7 +4,7 @@
     "com.unity.ide.visualstudio": "2.0.21",
     "com.unity.inputsystem": "1.7.0",
     "com.unity.test-framework": "1.1.33",
-    "com.utilities.buildpipeline": "1.1.7"
+    "com.utilities.buildpipeline": "1.1.8"
   },
   "scopedRegistries": [
     {
