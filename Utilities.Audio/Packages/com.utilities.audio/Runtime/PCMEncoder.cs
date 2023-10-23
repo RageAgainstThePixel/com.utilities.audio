@@ -101,5 +101,38 @@ namespace Utilities.Audio
 
             return samples;
         }
+
+        /// <summary>
+        /// Resample the sample data to the specified sampling rate.
+        /// </summary>
+        /// <param name="samples">Samples to resample.</param>
+        /// <param name="inputSamplingRate">The sampling rate of the samples provided.</param>
+        /// <param name="outputSamplingRate">The target sampling rate to resample to.</param>
+        /// <returns>Float array of samples at specified output sampling rate.</returns>
+        public static float[] Resample(float[] samples, int inputSamplingRate, int outputSamplingRate)
+        {
+            var ratio = (double)outputSamplingRate / inputSamplingRate;
+            var outputLength = (int)(samples.Length * ratio);
+            var result = new float[outputLength];
+
+            for (var i = 0; i < outputLength; i++)
+            {
+                var position = i / ratio;
+                var leftIndex = (int)Math.Floor(position);
+                var rightIndex = leftIndex + 1;
+                var fraction = position - leftIndex;
+
+                if (rightIndex >= samples.Length)
+                {
+                    result[i] = samples[leftIndex];
+                }
+                else
+                {
+                    result[i] = (float)(samples[leftIndex] * (1 - fraction) + samples[rightIndex] * fraction);
+                }
+            }
+
+            return result;
+        }
     }
 }
