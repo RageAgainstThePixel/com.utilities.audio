@@ -50,20 +50,35 @@ namespace Utilities.Audio
             var trimmedLength = end - start;
             Assert.IsTrue(trimmedLength > 0);
             Assert.IsTrue(trimmedLength <= sampleCount);
-            var sampleIndex = 0;
             var pcmData = size switch
             {
-                PCMFormatSize.EightBit => new byte[trimmedLength * sizeof(short)],
-                PCMFormatSize.SixteenBit => new byte[trimmedLength * sizeof(float)],
+                PCMFormatSize.EightBit => new byte[trimmedLength * sizeof(byte)],
+                PCMFormatSize.SixteenBit => new byte[trimmedLength * sizeof(short)],
                 _ => throw new ArgumentOutOfRangeException(nameof(size), size, null)
             };
 
             // convert and write data
-            for (var i = start; i < end; i++)
+            switch (size)
             {
-                var sample = (short)(samples[i] * short.MaxValue);
-                pcmData[sampleIndex++] = (byte)(sample >> 0);
-                pcmData[sampleIndex++] = (byte)(sample >> 8);
+                case PCMFormatSize.EightBit:
+                    for (var i = start; i < end; i++)
+                    {
+                        // scale the sample to the full 8-bit range (byte.MaxValue = 255),
+                        // then shift to adjust for silence being at 128.
+                        var sample = (samples[i] * 127f) + 128;
+                        pcmData[i - start] = (byte)sample;
+                    }
+                    break;
+                case PCMFormatSize.SixteenBit:
+                    for (var i = start; i < end; i++)
+                    {
+                        var sample = (short)(samples[i] * short.MaxValue);
+                        pcmData[(i - start) * 2] = (byte)(sample >> 0);
+                        pcmData[(i - start) * 2 + 1] = (byte)(sample >> 8);
+                    }
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(size), size, null);
             }
 
             return pcmData;
@@ -76,22 +91,27 @@ namespace Utilities.Audio
         /// <param name="size">Size of PCM sample data.</param>
         public static float[] Decode(byte[] pcmData, PCMFormatSize size = PCMFormatSize.EightBit)
         {
-            var sampleCount = pcmData.Length / (sizeof(short) * (int)size);
+            var sampleCount = size switch
+            {
+                PCMFormatSize.EightBit => pcmData.Length / sizeof(byte),
+                PCMFormatSize.SixteenBit => pcmData.Length / sizeof(short),
+                _ => throw new ArgumentOutOfRangeException(nameof(size), size, null)
+            };
             var samples = new float[sampleCount];
             var sampleIndex = 0;
 
             switch (size)
             {
                 case PCMFormatSize.EightBit:
-                    for (var i = 0; i < pcmData.Length; i++)
+                    for (var i = 0; i < sampleCount; i++)
                     {
-                        samples[sampleIndex++] = pcmData[i] / 128f - 1f;
+                        samples[sampleIndex++] = (pcmData[i] - 128f) / 128f;
                     }
                     break;
                 case PCMFormatSize.SixteenBit:
-                    for (var i = 0; i < pcmData.Length; i += 2)
+                    for (var i = 0; i < sampleCount; i++)
                     {
-                        var sample = (short)((pcmData[i + 1] << 8) | pcmData[i]);
+                        var sample = BitConverter.ToInt16(pcmData, i * sizeof(short));
                         samples[sampleIndex++] = sample / (float)short.MaxValue;
                     }
                     break;
