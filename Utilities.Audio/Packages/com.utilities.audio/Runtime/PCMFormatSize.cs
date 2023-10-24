@@ -5,6 +5,8 @@ namespace Utilities.Audio
     public enum PCMFormatSize
     {
         EightBit = 1,
-        SixteenBit = 2
+        SixteenBit = 2,
+        TwentyFourBit = 3,
+        ThirtyTwoBit = 4
     }
 }
