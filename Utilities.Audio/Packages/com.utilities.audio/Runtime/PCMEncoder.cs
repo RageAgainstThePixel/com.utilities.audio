@@ -50,12 +50,8 @@ namespace Utilities.Audio
             var trimmedLength = end - start;
             Assert.IsTrue(trimmedLength > 0);
             Assert.IsTrue(trimmedLength <= sampleCount);
-            var pcmData = size switch
-            {
-                PCMFormatSize.EightBit => new byte[trimmedLength * sizeof(byte)],
-                PCMFormatSize.SixteenBit => new byte[trimmedLength * sizeof(short)],
-                _ => throw new ArgumentOutOfRangeException(nameof(size), size, null)
-            };
+            var offset = (int)size;
+            var pcmData = new byte[trimmedLength * offset];
 
             // convert and write data
             switch (size)
@@ -73,8 +69,31 @@ namespace Utilities.Audio
                     for (var i = start; i < end; i++)
                     {
                         var sample = (short)(samples[i] * short.MaxValue);
-                        pcmData[(i - start) * 2] = (byte)(sample >> 0);
-                        pcmData[(i - start) * 2 + 1] = (byte)(sample >> 8);
+                        var stride = (i - start) * offset;
+                        pcmData[stride] = (byte)(sample >> 0);
+                        pcmData[stride + 1] = (byte)(sample >> 8);
+                    }
+                    break;
+                case PCMFormatSize.TwentyFourBit:
+                    for (var i = start; i < end; i++)
+                    {
+                        var sample = Convert.ToInt32(samples[i] * 8388607);  // 2^23 - 1
+                        var bytes = BitConverter.GetBytes(sample);
+                        var stride = (i - start) * offset;
+                        pcmData[stride] = bytes[1];
+                        pcmData[stride + 1] = bytes[2];
+                        pcmData[stride + 2] = bytes[3];
+                    }
+                    break;
+                case PCMFormatSize.ThirtyTwoBit:
+                    for (var i = start; i < end; i++)
+                    {
+                        var sample = (int)(samples[i] * int.MaxValue);
+                        var stride = (i - start) * offset;
+                        pcmData[stride] = (byte)(sample >> 0);
+                        pcmData[stride + 1] = (byte)(sample >> 8);
+                        pcmData[stride + 2] = (byte)(sample >> 16);
+                        pcmData[stride + 3] = (byte)(sample >> 24);
                     }
                     break;
                 default:
@@ -91,12 +110,12 @@ namespace Utilities.Audio
         /// <param name="size">Size of PCM sample data.</param>
         public static float[] Decode(byte[] pcmData, PCMFormatSize size = PCMFormatSize.EightBit)
         {
-            var sampleCount = size switch
+            if (pcmData.Length % (int)size != 0)
             {
-                PCMFormatSize.EightBit => pcmData.Length / sizeof(byte),
-                PCMFormatSize.SixteenBit => pcmData.Length / sizeof(short),
-                _ => throw new ArgumentOutOfRangeException(nameof(size), size, null)
-            };
+                throw new ArgumentException($"{nameof(pcmData)} length must be multiple of the specified {nameof(PCMFormatSize)}!", nameof(pcmData));
+            }
+
+            var sampleCount = pcmData.Length / (int)size;
             var samples = new float[sampleCount];
             var sampleIndex = 0;
 
@@ -113,6 +132,20 @@ namespace Utilities.Audio
                     {
                         var sample = BitConverter.ToInt16(pcmData, i * sizeof(short));
                         samples[sampleIndex++] = sample / (float)short.MaxValue;
+                    }
+                    break;
+                case PCMFormatSize.TwentyFourBit:
+                    for (var i = 0; i < sampleCount; i++)
+                    {
+                        var sample = (pcmData[i * 3] << 8) | (pcmData[i * 3 + 1] << 16) | (pcmData[i * 3 + 2] << 24);
+                        samples[sampleIndex++] = sample / 8388607f;
+                    }
+                    break;
+                case PCMFormatSize.ThirtyTwoBit:
+                    for (var i = 0; i < sampleCount; i++)
+                    {
+                        var sample = BitConverter.ToInt32(pcmData, i * sizeof(int));
+                        samples[sampleIndex++] = sample / (float)int.MaxValue;
                     }
                     break;
                 default:
