@@ -142,6 +142,11 @@ namespace Utilities.Audio
         }
 
         /// <summary>
+        /// The default recording device to use for recording.
+        /// </summary>
+        public static string DefaultRecordingDevice { get; set; }
+
+        /// <summary>
         /// Starts the recording process.
         /// </summary>
         /// <param name="clipName">Optional, name for the clip.</param>
@@ -179,12 +184,20 @@ namespace Utilities.Audio
                 saveDirectory = DefaultSaveLocation;
             }
 
-            var clip = Microphone.Start(null, false, MaxRecordingLength, Frequency);
+            if (string.IsNullOrWhiteSpace(DefaultRecordingDevice))
+            {
+                DefaultRecordingDevice = null;
+            }
+
+            var clip = Microphone.Start(DefaultRecordingDevice, false, MaxRecordingLength, Frequency);
 
             if (EnableDebug)
             {
-                Microphone.GetDeviceCaps(null, out var minFreq, out var maxFreq);
-                Debug.Log($"[{nameof(RecordingManager)}] Recording devices: {string.Join(", ", Microphone.devices)} | minFreq: {minFreq} | maxFreq {maxFreq} | clip freq: {clip.frequency} | samples: {clip.samples}");
+                var deviceName = string.IsNullOrWhiteSpace(DefaultRecordingDevice)
+                    ? string.Join(", ", Microphone.devices)
+                    : DefaultRecordingDevice;
+                Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
+                Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq} | clip freq: {clip?.frequency} | samples: {clip?.samples}");
             }
 
             clip.name = (string.IsNullOrWhiteSpace(clipName) ? Guid.NewGuid().ToString() : clipName)!;

@@ -1,7 +1,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
-using UnityEngine.Assertions;
 
 namespace Utilities.Audio
 {
@@ -13,45 +12,49 @@ namespace Utilities.Audio
         /// <param name="samples">Raw sample data</param>
         /// <param name="size">Size of PCM sample data.</param>
         /// <param name="trim">Optional, trim the silence from the data.</param>
+        /// <param name="silenceThreshold">Optional, silence threshold to use for trimming operations.</param>
         /// <returns>Byte array PCM data.</returns>
-        public static byte[] Encode(float[] samples, PCMFormatSize size = PCMFormatSize.EightBit, bool trim = false)
+        public static byte[] Encode(float[] samples, PCMFormatSize size = PCMFormatSize.EightBit, bool trim = false, float silenceThreshold = 1.0e-5f)
         {
             var sampleCount = samples.Length;
 
             // trim data
             var start = 0;
             var end = sampleCount;
+            var length = sampleCount;
 
             if (trim)
             {
                 for (var i = 0; i < sampleCount; i++)
                 {
-                    if (samples[i] * short.MaxValue == 0)
+                    // Replace the condition for detecting non-silence
+                    if (Math.Abs(samples[i]) > silenceThreshold)
                     {
-                        continue;
+                        start = i;
+                        break;
                     }
-
-                    start = i;
-                    break;
                 }
 
                 for (var i = sampleCount - 1; i >= 0; i--)
                 {
-                    if (samples[i] * short.MaxValue == 0)
+                    // Replace the condition for detecting non-silence
+                    if (Math.Abs(samples[i]) > silenceThreshold)
                     {
-                        continue;
+                        end = i + 1;
+                        break;
                     }
+                }
 
-                    end = i + 1;
-                    break;
+                length = end - start;
+
+                if (length < 1)
+                {
+                    throw new InvalidOperationException("Trimming operation failed!");
                 }
             }
 
-            var trimmedLength = end - start;
-            Assert.IsTrue(trimmedLength > 0);
-            Assert.IsTrue(trimmedLength <= sampleCount);
             var offset = (int)size;
-            var pcmData = new byte[trimmedLength * offset];
+            var pcmData = new byte[length * offset];
 
             // convert and write data
             switch (size)
@@ -59,38 +62,41 @@ namespace Utilities.Audio
                 case PCMFormatSize.EightBit:
                     for (var i = start; i < end; i++)
                     {
-                        // scale the sample to the full 8-bit range (byte.MaxValue = 255),
-                        // then shift to adjust for silence being at 128.
-                        var sample = (samples[i] * 127f) + 128;
+                        var sample = Math.Min(Math.Max((samples[i] * 127.5f) + 128, byte.MinValue), byte.MaxValue);
                         pcmData[i - start] = (byte)sample;
                     }
                     break;
                 case PCMFormatSize.SixteenBit:
                     for (var i = start; i < end; i++)
                     {
-                        var sample = (short)(samples[i] * short.MaxValue);
+                        var sample = (short)Math.Min(Math.Max(samples[i] * short.MaxValue, short.MinValue), short.MaxValue);
                         var stride = (i - start) * offset;
-                        pcmData[stride] = (byte)(sample >> 0);
+                        pcmData[stride] = (byte)sample;
                         pcmData[stride + 1] = (byte)(sample >> 8);
                     }
                     break;
                 case PCMFormatSize.TwentyFourBit:
                     for (var i = start; i < end; i++)
                     {
-                        var sample = Convert.ToInt32(samples[i] * 8388607);  // 2^23 - 1
-                        var bytes = BitConverter.GetBytes(sample);
+                        const int max24Value = 8388607;
+                        const int min24Value = -8388608;
+                        var scaledSample = samples[i] * max24Value; // 2^23 - 1
+                        var sample = (int)scaledSample;
                         var stride = (i - start) * offset;
-                        pcmData[stride] = bytes[1];
-                        pcmData[stride + 1] = bytes[2];
-                        pcmData[stride + 2] = bytes[3];
+                        // Clamping to a valid 24-bit range prior to conversion
+                        sample = Math.Min(Math.Max(sample, min24Value), max24Value);
+                        pcmData[stride] = (byte)(sample & byte.MaxValue);
+                        pcmData[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
+                        pcmData[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
                     }
                     break;
                 case PCMFormatSize.ThirtyTwoBit:
                     for (var i = start; i < end; i++)
                     {
-                        var sample = (int)(samples[i] * int.MaxValue);
+                        var scale = (samples[i] >= 0) ? int.MaxValue : int.MinValue;
+                        var sample = (int)(samples[i] * scale);
                         var stride = (i - start) * offset;
-                        pcmData[stride] = (byte)(sample >> 0);
+                        pcmData[stride] = (byte)sample;
                         pcmData[stride + 1] = (byte)(sample >> 8);
                         pcmData[stride + 2] = (byte)(sample >> 16);
                         pcmData[stride + 3] = (byte)(sample >> 24);
