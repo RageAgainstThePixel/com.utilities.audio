@@ -142,6 +142,11 @@ namespace Utilities.Audio
         }
 
         /// <summary>
+        /// The default recording device to use for recording.
+        /// </summary>
+        public static string DefaultRecordingDevice { get; set; }
+
+        /// <summary>
         /// Starts the recording process.
         /// </summary>
         /// <param name="clipName">Optional, name for the clip.</param>
@@ -165,7 +170,6 @@ namespace Utilities.Audio
             if (IsBusy)
             {
                 Debug.LogWarning($"[{nameof(RecordingManager)}] Recording already in progress!");
-
                 return null;
             }
 
@@ -179,16 +183,35 @@ namespace Utilities.Audio
                 saveDirectory = DefaultSaveLocation;
             }
 
-            var clip = Microphone.Start(null, false, MaxRecordingLength, Frequency);
+            if (string.IsNullOrWhiteSpace(DefaultRecordingDevice))
+            {
+                DefaultRecordingDevice = null;
+            }
 
             if (EnableDebug)
             {
-                Microphone.GetDeviceCaps(null, out var minFreq, out var maxFreq);
-                Debug.Log($"[{nameof(RecordingManager)}] Recording devices: {string.Join(", ", Microphone.devices)} | minFreq: {minFreq} | maxFreq {maxFreq} | clip freq: {clip.frequency} | samples: {clip.samples}");
+                Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
+                var deviceName = string.IsNullOrWhiteSpace(DefaultRecordingDevice)
+                    ? string.Join(", ", Microphone.devices)
+                    : DefaultRecordingDevice;
+                Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq}");
+            }
+
+            var clip = Microphone.Start(DefaultRecordingDevice, false, MaxRecordingLength, Frequency);
+
+            if (clip == null)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] Failed to initialize Unity Microphone!");
+                return null;
             }
 
             clip.name = (string.IsNullOrWhiteSpace(clipName) ? Guid.NewGuid().ToString() : clipName)!;
             clipName = clip.name;
+
+            if (EnableDebug)
+            {
+                Debug.Log($"Created new clip {clip.name} | clip freq: {clip.frequency} | samples: {clip.samples}");
+            }
 
             lock (recordingLock)
             {
