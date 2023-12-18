@@ -170,7 +170,6 @@ namespace Utilities.Audio
             if (IsBusy)
             {
                 Debug.LogWarning($"[{nameof(RecordingManager)}] Recording already in progress!");
-
                 return null;
             }
 
@@ -189,19 +188,30 @@ namespace Utilities.Audio
                 DefaultRecordingDevice = null;
             }
 
-            var clip = Microphone.Start(DefaultRecordingDevice, false, MaxRecordingLength, Frequency);
-
             if (EnableDebug)
             {
+                Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
                 var deviceName = string.IsNullOrWhiteSpace(DefaultRecordingDevice)
                     ? string.Join(", ", Microphone.devices)
                     : DefaultRecordingDevice;
-                Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
-                Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq} | clip freq: {clip.frequency} | samples: {clip.samples}");
+                Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq}");
+            }
+
+            var clip = Microphone.Start(DefaultRecordingDevice, false, MaxRecordingLength, Frequency);
+
+            if (clip == null)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] Failed to initialize Unity Microphone!");
+                return null;
             }
 
             clip.name = (string.IsNullOrWhiteSpace(clipName) ? Guid.NewGuid().ToString() : clipName)!;
             clipName = clip.name;
+
+            if (EnableDebug)
+            {
+                Debug.Log($"Created new clip {clip.name} | clip freq: {clip.frequency} | samples: {clip.samples}");
+            }
 
             lock (recordingLock)
             {
