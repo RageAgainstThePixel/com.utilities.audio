@@ -56,4 +56,4 @@ A basic `AbstractRecordingBehaviour` is included in this package to make it very
 ## Audio Clip Extensions
 
 Provides extensions to encode `AudioClip`s to PCM encoded bytes.
-Supports 8 bit and 16 bit sample sizes.
+Supports 8, 16, 24, and 32 bit sample sizes.
