@@ -29,13 +29,10 @@ namespace Utilities.Audio
             set => debug = value;
         }
 
-        [SerializeField]
-        private string defaultSaveLocation;
-
         public string DefaultSaveLocation
         {
-            get => defaultSaveLocation;
-            set => defaultSaveLocation = value;
+            get => RecordingManager.DefaultSaveLocation;
+            set => RecordingManager.DefaultSaveLocation = value;
         }
 
         private CancellationTokenSource gameObjectCts;
@@ -46,11 +43,6 @@ namespace Utilities.Audio
             {
                 audioSource = GetComponent<AudioSource>();
             }
-
-            if (string.IsNullOrWhiteSpace(defaultSaveLocation))
-            {
-                defaultSaveLocation = $"{Application.streamingAssetsPath}/Recordings";
-            }
         }
 
         private void Awake() => OnValidate();
@@ -59,9 +51,6 @@ namespace Utilities.Audio
         {
             // Enable debugging
             RecordingManager.EnableDebug = debug;
-
-            // Set the default save location.
-            RecordingManager.DefaultSaveLocation = defaultSaveLocation;
 
             // Set the max recording length (min 30 seconds, max 300 seconds or 5 min)
             RecordingManager.MaxRecordingLength = 60;
