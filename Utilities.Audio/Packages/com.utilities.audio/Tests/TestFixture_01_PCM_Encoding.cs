@@ -1,13 +1,41 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using NUnit.Framework;
+using System;
+using System.IO;
 
 namespace Utilities.Audio.Tests
 {
     internal class TestFixture_01_PCM_Encoding
     {
-        private const double TestFrequency = 440.0;  // A4 note.
+        private const double TestFrequency = 440;  // A4 note.
         private const int TestSampleRate = 44100;  // Default unity sample rate.
+
+        [OneTimeSetUp]
+        public void Setup()
+        {
+            if (!Directory.Exists("test-samples"))
+            {
+                Directory.CreateDirectory("test-samples");
+            }
+        }
+
+        [Test]
+        public void Test_00_SinWaveGeneration()
+        {
+            var fixedSilenceAtStart = 512;
+            var fixedSilenceAtEnd = 256;
+            var sineWaveSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, TestSampleRate);
+            var encodedSineWave = PCMEncoder.Encode(sineWaveSamples, PCMFormatSize.EightBit);
+            var sineWaveWithSilenceSamples = TestUtilities.GenerateSineWaveSamplesWithSilence(TestFrequency, TestSampleRate, fixedSilenceAtStart, fixedSilenceAtEnd);
+            var encodedSineWaveWithSilence = PCMEncoder.Encode(sineWaveWithSilenceSamples, PCMFormatSize.EightBit, true);
+            var sampleCount = encodedSineWave.Length;
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                Assert.IsTrue(Math.Abs(encodedSineWave[i] - encodedSineWaveWithSilence[i]) < 0.001f, $"Sample at index [{i}] {encodedSineWaveWithSilence[i]} does not match expected value: {encodedSineWave[i]}!");
+            }
+        }
 
         [Test]
         public void Test_01_01_PCM_Encode_8Bit_NoTrim()
@@ -15,6 +43,8 @@ namespace Utilities.Audio.Tests
             var testSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, TestSampleRate);
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.EightBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.EightBit);
+
+            File.WriteAllBytes("test-samples/8bit-wav.pcm", encodedBytes);
 
             // Assert at the end of the unit test
             Assert.AreEqual(TestSampleRate, decodedSamples.Length);
@@ -37,6 +67,8 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.EightBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.EightBit);
 
+            File.WriteAllBytes("test-samples/8bit-wav-trimmed.pcm", encodedBytes);
+
             // The decoded samples should be only the non-silent portion of the original samples.
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
@@ -54,6 +86,8 @@ namespace Utilities.Audio.Tests
             var testSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, TestSampleRate);
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.SixteenBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.SixteenBit);
+
+            File.WriteAllBytes("test-samples/16bit-wav.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
@@ -76,6 +110,8 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.SixteenBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.SixteenBit);
 
+            File.WriteAllBytes("test-samples/16bit-wav-trimmed.pcm", encodedBytes);
+
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
             var tolerance = 1.0f / short.MaxValue; // Tolerance for 16-bit quantization
@@ -92,6 +128,8 @@ namespace Utilities.Audio.Tests
             var testSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, TestSampleRate);
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.TwentyFourBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.TwentyFourBit);
+
+            File.WriteAllBytes("test-samples/24bit-wav.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
@@ -114,6 +152,8 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.TwentyFourBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.TwentyFourBit);
 
+            File.WriteAllBytes("test-samples/24bit-wav-trimmed.pcm", encodedBytes);
+
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
             var tolerance = 2.0f / (1 << 23);
@@ -130,6 +170,8 @@ namespace Utilities.Audio.Tests
             var testSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, TestSampleRate);
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.ThirtyTwoBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.ThirtyTwoBit);
+
+            File.WriteAllBytes("test-samples/32bit-wav.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
@@ -151,6 +193,8 @@ namespace Utilities.Audio.Tests
 
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.ThirtyTwoBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.ThirtyTwoBit);
+
+            File.WriteAllBytes("test-samples/32bit-wav-trimmed.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 

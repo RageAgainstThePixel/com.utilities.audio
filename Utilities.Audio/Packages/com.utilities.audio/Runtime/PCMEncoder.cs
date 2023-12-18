@@ -75,8 +75,8 @@ namespace Utilities.Audio
                         var value = samples[i];
                         var sample = (short)(value * short.MaxValue);
                         var stride = (i - start) * offset;
-                        pcmData[stride] = (byte)sample;
-                        pcmData[stride + 1] = (byte)(sample >> 8);
+                        pcmData[stride] = (byte)(sample & byte.MaxValue);
+                        pcmData[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
                     }
                     break;
                 case PCMFormatSize.TwentyFourBit:
@@ -131,17 +131,18 @@ namespace Utilities.Audio
                 case PCMFormatSize.EightBit:
                     for (var i = 0; i < sampleCount; i++)
                     {
-                        var encoded = pcmData[i];
-                        var sample = (encoded - 128f) / 127f; // Normalize to [-1, 1] range
-                        samples[sampleIndex] = sample;
+                        var sample = pcmData[i];
+                        var normalized = (sample - 128f) / 127f; // Normalize to [-1, 1] range
+                        samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
                     break;
                 case PCMFormatSize.SixteenBit:
                     for (var i = 0; i < sampleCount; i++)
                     {
-                        var sample = BitConverter.ToInt16(pcmData, i * sizeof(short));
-                        samples[sampleIndex] = sample / (float)short.MaxValue; // Normalize to [-1, 1] range
+                        var sample = (short)((pcmData[i * 2 + 1] << 8) | pcmData[i * 2]);
+                        var normalized = sample / (float)short.MaxValue; // Normalize to [-1, 1] range
+                        samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
                     break;
@@ -150,15 +151,17 @@ namespace Utilities.Audio
                     {
                         var sample = (pcmData[i * 3] << 0) | (pcmData[i * 3 + 1] << 8) | (pcmData[i * 3 + 2] << 16);
                         sample = (sample & 0x800000) != 0 ? sample | unchecked((int)0xff000000) : sample & 0x00ffffff;
-                        samples[sampleIndex] = sample / (float)(1 << 23); // Normalize to [-1, 1] range
+                        var normalized = sample / (float)(1 << 23); // Normalize to [-1, 1] range
+                        samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
                     break;
                 case PCMFormatSize.ThirtyTwoBit:
                     for (var i = 0; i < pcmData.Length; i += 4)
                     {
-                        var sample = BitConverter.ToInt32(pcmData, i);
-                        samples[sampleIndex] = sample / (float)int.MaxValue; // Normalize to [-1, 1] range
+                        var sample = (pcmData[i + 3] << 24) | (pcmData[i + 2] << 16) | (pcmData[i + 1] << 8) | pcmData[i];
+                        var normalized = sample / (float)int.MaxValue; // Normalize to [-1, 1] range
+                        samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
                     break;
