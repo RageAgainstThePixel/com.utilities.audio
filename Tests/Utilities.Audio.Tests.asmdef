@@ -1,6 +1,6 @@
 {
-    "name": "Utilities.AudioTests",
-    "rootNamespace": "Utilities.AudioTests",
+    "name": "Utilities.Audio.Tests",
+    "rootNamespace": "Utilities.Audio.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
