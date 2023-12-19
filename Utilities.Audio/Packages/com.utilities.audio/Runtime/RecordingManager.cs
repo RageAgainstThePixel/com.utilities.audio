@@ -188,6 +188,12 @@ namespace Utilities.Audio
                 DefaultRecordingDevice = null;
             }
 
+            if (Microphone.devices.Length == 0)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] No devices found to record from!");
+                return null;
+            }
+
             if (EnableDebug)
             {
                 Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
