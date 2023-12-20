@@ -7,13 +7,13 @@ namespace Utilities.Audio
     public static class AudioClipExtensions
     {
         /// <summary>
-        /// Encodes the <see cref="AudioClip"/> to PCM.<br/>
+        /// Encodes the <see cref="AudioClip"/> to PCM.
         /// </summary>
         /// <param name="audioClip"><see cref="AudioClip"/>.</param>
         /// <param name="size">Size of PCM sample data.</param>
         /// <param name="trim">Optional, trim the silence from the data.</param>
         /// <returns>Byte array PCM data.</returns>
-        public static byte[] EncodeToPCM(this AudioClip audioClip, PCMFormatSize size = PCMFormatSize.EightBit, bool trim = false)
+        public static byte[] EncodeToPCM(this AudioClip audioClip, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false)
         {
             var samples = new float[audioClip.samples * audioClip.channels];
             audioClip.GetData(samples, 0);
@@ -21,12 +21,12 @@ namespace Utilities.Audio
         }
 
         /// <summary>
-        /// Decodes the raw PCM byte data and sets it to the <see cref="AudioClip"/>.<br/>
+        /// Decodes the raw PCM byte data and sets it to the <see cref="AudioClip"/>.
         /// </summary>
         /// <param name="audioClip"><see cref="AudioClip"/>.</param>
         /// <param name="pcmData">PCM data to decode.</param>
         /// <param name="size">Size of PCM sample data.</param>
-        public static void DecodeFromPCM(this AudioClip audioClip, byte[] pcmData, PCMFormatSize size = PCMFormatSize.EightBit)
+        public static void DecodeFromPCM(this AudioClip audioClip, byte[] pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit)
         {
             var samples = PCMEncoder.Decode(pcmData, size);
             // Set the decoded audio data directly into the existing AudioClip

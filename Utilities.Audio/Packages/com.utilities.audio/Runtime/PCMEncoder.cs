@@ -14,7 +14,7 @@ namespace Utilities.Audio
         /// <param name="trim">Optional, trim the silence from the data.</param>
         /// <param name="silenceThreshold">Optional, silence threshold to use for trimming operations.</param>
         /// <returns>Byte array PCM data.</returns>
-        public static byte[] Encode(float[] samples, PCMFormatSize size = PCMFormatSize.EightBit, bool trim = false, float silenceThreshold = 0.001f)
+        public static byte[] Encode(float[] samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f)
         {
             var sampleCount = samples.Length;
             var start = 0;
@@ -115,7 +115,7 @@ namespace Utilities.Audio
         /// </summary>
         /// <param name="pcmData">PCM data to decode.</param>
         /// <param name="size">Size of PCM sample data.</param>
-        public static float[] Decode(byte[] pcmData, PCMFormatSize size = PCMFormatSize.EightBit)
+        public static float[] Decode(byte[] pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit)
         {
             if (pcmData.Length % (int)size != 0)
             {

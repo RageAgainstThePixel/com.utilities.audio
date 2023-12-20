@@ -3,7 +3,7 @@
   "displayName": "Utilities.Audio",
   "description": "A simple package for audio extensions and utilities.",
   "keywords": [],
-  "version": "1.0.14",
+  "version": "1.1.0",
   "unity": "2021.3",
   "documentationUrl": "https://github.com/RageAgainstThePixel/com.utilities.audio#documentation",
   "changelogUrl": "https://github.com/RageAgainstThePixel/com.utilities.audio/releases",
