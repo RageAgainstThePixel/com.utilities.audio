@@ -44,7 +44,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.EightBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.EightBit);
 
-            File.WriteAllBytes("test-samples/8bit-wav.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/8bit-sine.pcm", encodedBytes);
 
             // Assert at the end of the unit test
             Assert.AreEqual(TestSampleRate, decodedSamples.Length);
@@ -67,7 +67,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.EightBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.EightBit);
 
-            File.WriteAllBytes("test-samples/8bit-wav-trimmed.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/8bit-sine-trimmed.pcm", encodedBytes);
 
             // The decoded samples should be only the non-silent portion of the original samples.
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
@@ -87,7 +87,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.SixteenBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.SixteenBit);
 
-            File.WriteAllBytes("test-samples/16bit-wav.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/16bit-sine.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
@@ -110,7 +110,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.SixteenBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.SixteenBit);
 
-            File.WriteAllBytes("test-samples/16bit-wav-trimmed.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/16bit-sine-trimmed.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
@@ -129,7 +129,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.TwentyFourBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.TwentyFourBit);
 
-            File.WriteAllBytes("test-samples/24bit-wav.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/24bit-sine.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
@@ -152,7 +152,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.TwentyFourBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.TwentyFourBit);
 
-            File.WriteAllBytes("test-samples/24bit-wav-trimmed.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/24bit-sine-trimmed.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
@@ -171,7 +171,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.ThirtyTwoBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.ThirtyTwoBit);
 
-            File.WriteAllBytes("test-samples/32bit-wav.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/32bit-sine.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
@@ -194,7 +194,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.ThirtyTwoBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.ThirtyTwoBit);
 
-            File.WriteAllBytes("test-samples/32bit-wav-trimmed.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/32bit-sine-trimmed.pcm", encodedBytes);
 
             Assert.AreEqual(TestSampleRate, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
