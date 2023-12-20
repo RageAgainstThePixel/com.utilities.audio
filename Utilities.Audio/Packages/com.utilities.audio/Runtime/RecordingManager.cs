@@ -1,6 +1,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -10,6 +11,8 @@ namespace Utilities.Audio
 {
     public static class RecordingManager
     {
+        private static readonly ConcurrentDictionary<Type, IEncoder> EncoderCache = new ConcurrentDictionary<Type, IEncoder>();
+
         private static int maxRecordingLength = 300;
 
         private static readonly object recordingLock = new object();
@@ -43,7 +46,7 @@ namespace Utilities.Audio
             }
         }
 
-        public static int Frequency { get; set; } = 48000;
+        public static int Frequency { get; set; } = 44100;
 
         private static bool isRecording;
 
@@ -188,16 +191,41 @@ namespace Utilities.Audio
                 DefaultRecordingDevice = null;
             }
 
+            if (Microphone.devices.Length == 0)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] No devices found to record from!");
+                return null;
+            }
+
+            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
+
             if (EnableDebug)
             {
-                Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
                 var deviceName = string.IsNullOrWhiteSpace(DefaultRecordingDevice)
                     ? string.Join(", ", Microphone.devices)
                     : DefaultRecordingDevice;
                 Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq}");
             }
 
-            var clip = Microphone.Start(DefaultRecordingDevice, false, MaxRecordingLength, Frequency);
+            var sampleRate = Frequency;
+
+            if (sampleRate <= minFreq)
+            {
+                sampleRate = minFreq;
+            }
+
+            if (sampleRate >= maxFreq)
+            {
+                sampleRate = maxFreq;
+            }
+
+            if (EnableDebug && sampleRate != Frequency)
+            {
+                Debug.LogWarning($"[{nameof(RecordingManager)}] Invalid Frequency {Frequency}. Using {sampleRate}");
+            }
+
+            // create dummy clip for recording purposes with a 10 second buffer.
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, lengthSec: 10, sampleRate);
 
             if (clip == null)
             {
@@ -229,7 +257,12 @@ namespace Utilities.Audio
 
             try
             {
-                var encoder = Activator.CreateInstance<T>();
+                if (!EncoderCache.TryGetValue(typeof(T), out var encoder))
+                {
+                    encoder = Activator.CreateInstance<T>();
+                    EncoderCache.TryAdd(typeof(T), encoder);
+                }
+
                 return await encoder.StreamSaveToDiskAsync(clip, saveDirectory, cancellationTokenSource.Token, OnClipRecorded).ConfigureAwait(false);
             }
             catch (Exception e)
