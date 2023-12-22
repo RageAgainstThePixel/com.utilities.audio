@@ -158,7 +158,8 @@ namespace Utilities.Audio
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
         public static async void StartRecording<T>(string clipName = null, string saveDirectory = null, Action<Tuple<string, AudioClip>> callback = null, CancellationToken cancellationToken = default) where T : IEncoder
         {
-            var result = await StartRecordingAsync<T>(clipName, saveDirectory, cancellationToken).ConfigureAwait(false);
+            var result = await StartRecordingAsync<T>(clipName, saveDirectory, cancellationToken);
+            await Awaiters.UnityMainThread;
             callback?.Invoke(result);
         }
 
