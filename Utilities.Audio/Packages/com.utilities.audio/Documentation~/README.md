@@ -6,16 +6,20 @@ A simple package for audio extensions and utilities in the [Unity](https://unity
 
 ## Installing
 
+Requires Unity 2021.3 LTS or higher.
+
+The recommended installation method is though the unity package manager and [OpenUPM](https://openupm.com/packages/com.utilities.audio).
+
 ### Via Unity Package Manager and OpenUPM
 
 - Open your Unity project settings
 - Select the `Package Manager`
 ![scoped-registries](images/package-manager-scopes.png)
 - Add the OpenUPM package registry:
-  - `Name: OpenUPM`
-  - `URL: https://package.openupm.com`
-  - `Scope(s):`
-    - `com.utilities.audio`
+  - Name: `OpenUPM`
+  - URL: `https://package.openupm.com`
+  - Scope(s):
+    - `com.utilities`
 - Open the Unity Package Manager window
 - Change the Registry from Unity to `My Registries`
 - Add the `Utilities.Audio` package
@@ -37,6 +41,8 @@ On its own this package doesn't do too much but provide base functionality for r
 - [Recording Manager](#recording-manager)
 - [Recording Behaviour](#recording-behaviour)
 - [Audio Clip Extensions](#audio-clip-extensions)
+  - [Encode PCM](#encode-pcm)
+  - [Decode PCM](#decode-pcm)
 
 ## Encoder Packages
 
@@ -51,9 +57,23 @@ A perfect example implementation on how to use this is in the `AbstractRecording
 
 ## Recording Behaviour
 
-A basic `AbstractRecordingBehaviour` is included in this package to make it very simple to add recording to any GameObject in the scene. This class is really meant to be a good baseline example of how to use the `RecordingManager`. This abstract class is implemented in each of the encoder packages for simplicity and ease of use.
+A basic `AbstractRecordingBehaviour` is included in this package to make it very simple to add recording to any GameObject in the scene. This class is really meant to be a good baseline example of how to use the `RecordingManager`. This abstract class is implemented in each of the [encoder packages](#encoder-packages) for simplicity and ease of use.
 
 ## Audio Clip Extensions
 
 Provides extensions to encode `AudioClip`s to PCM encoded bytes.
 Supports 8, 16, 24, and 32 bit sample sizes.
+
+### Encode PCM
+
+```csharp
+// Encodes the <see cref="AudioClip"/> to raw PCM bytes.
+var pcmBytes = audioClip.EncodeToPCM();
+```
+
+### Decode PCM
+
+```csharp
+// Decodes the raw PCM byte data and sets it to the audioClip.
+audioClip.DecodeFromPCM(pcmBytes);
+```
