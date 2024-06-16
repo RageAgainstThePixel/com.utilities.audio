@@ -60,7 +60,7 @@ namespace Utilities.Audio
         [DllImport("__Internal")]
         private static extern int Microphone_StartRecording(string deviceName, bool loop, int length, int frequency, Microphone_OnBufferReadDelegate onBufferRead, IntPtr buffer, int bufferLength);
 
-        private delegate void Microphone_OnBufferReadDelegate(IntPtr buffer, int position, int length);
+        private delegate void Microphone_OnBufferReadDelegate(IntPtr buffer, int length);
 
         [MonoPInvokeCallback(typeof(Microphone_OnBufferReadDelegate))]
         private static void Microphone_OnBufferRead(IntPtr buffer, int length)
