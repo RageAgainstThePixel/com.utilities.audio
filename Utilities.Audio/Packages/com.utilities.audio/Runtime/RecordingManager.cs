@@ -226,7 +226,7 @@ namespace Utilities.Audio
             }
 
             // create dummy clip for recording purposes with a 10 second buffer.
-            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, lengthSec: 10, sampleRate);
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 10, sampleRate);
 
             if (clip == null)
             {
