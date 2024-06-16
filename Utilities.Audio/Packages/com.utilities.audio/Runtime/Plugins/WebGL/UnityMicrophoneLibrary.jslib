@@ -74,14 +74,11 @@ var UnityMicrophoneLibrary = {
    * Starts recording from the specified device.
    * @param {string} deviceName The name of the device. If string is null or empty, the default device is used.
    * @param {boolean} loop Indicates whether the recording should continue recording if length is reached, and wrap around and record from the beginning of the buffer.
-   * @param {number} length The length of the recording in seconds.
    * @param {number} frequency The sample rate of the recording.
    * @param {number} onBufferReadPtr The pointer to the buffer read callback.
-   * @param {number} bufferPtr The pointer to the buffer.
-   * @param {number} bufferLength The length of the buffer.
    * @returns {number} The status code. 0 if successful, 1 if an error occurred, 2 if the browser does not support recording.
   */
-  Microphone_StartRecording: function (deviceName, loop, length, frequency, onBufferReadPtr, bufferPtr, bufferLength) {
+  Microphone_StartRecording: function (deviceName, loop, frequency, onBufferReadPtr) {
     console.log("Microphone_StartRecording");
     try {
       if (!navigator.mediaDevices.getUserMedia) {
@@ -105,41 +102,20 @@ var UnityMicrophoneLibrary = {
       };
 
       navigator.mediaDevices.getUserMedia(constraints).then(stream => {
-        microphone.buffer = new Float32Array(bufferLength);
         const audioContext = new AudioContext({ sampleRate: frequency });
         const source = audioContext.createMediaStreamSource(stream);
-        const processor = audioContext.createScriptProcessor(bufferLength, 1, 1);
+        const processor = audioContext.createScriptProcessor();
 
         processor.onaudioprocess = (event) => {
-          const inputData = event.inputBuffer.getChannelData(0);
+          const data = event.inputBuffer.getChannelData(0);
+          var buffer = Module._malloc(data.length * data.BYTES_PER_ELEMENT);
+          writeArrayToMemory(data, buffer);
 
-          for (let i = 0; i < inputData.length; i++) {
-            microphone.buffer[i] = inputData[i];
+          try {
+            Module.dynCall_vii(onBufferReadPtr, buffer, data.length);
+          } finally {
+            Module._free(buffer);
           }
-
-          let dataPosition = microphone.position % bufferLength;
-
-          for (let i = 0; i < inputData.length; i++) {
-            Module.HEAPF32[bufferPtr / 4 + dataPosition] = inputData[i];
-
-            if (dataPosition + 1 < bufferLength) {
-              dataPosition++;
-            } else if (loop) {
-              dataPosition = 0;
-            } else {
-              microphone.isRecording = false;
-              break;
-            }
-          }
-
-          microphone.position += inputData.length;
-
-          if (microphone.position >= bufferLength && !loop) {
-            microphone.position = bufferLength;
-            microphone.isRecording = false;
-          }
-
-          Module.dynCall_vi(onBufferReadPtr, bufferLength);
         };
 
         source.connect(processor);

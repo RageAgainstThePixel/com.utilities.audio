@@ -58,23 +58,19 @@ namespace Utilities.Audio
         private static extern string Microphone_GetDeviceName(int index);
 
         [DllImport("__Internal")]
-        private static extern int Microphone_StartRecording(string deviceName, bool loop, int length, int frequency, Microphone_OnBufferReadDelegate onBufferRead, IntPtr buffer, int bufferLength);
+        private static extern int Microphone_StartRecording(string deviceName, bool loop, int frequency, Microphone_OnBufferReadDelegate onBufferRead);
 
         private delegate void Microphone_OnBufferReadDelegate(IntPtr buffer, int length);
 
         [MonoPInvokeCallback(typeof(Microphone_OnBufferReadDelegate))]
         private static void Microphone_OnBufferRead(IntPtr buffer, int length)
         {
-            if (nativeBuffer == null || nativeBuffer.Length != length)
-            {
-                nativeBuffer = new float[length];
-            }
-
-            Marshal.Copy(buffer, nativeBuffer, 0, length);
+            var samples = new float[length];
+            Marshal.Copy(buffer, samples, 0, length);
 
             if (currentClip != null)
             {
-                currentClip.SetData(nativeBuffer, 0);
+                currentClip.SetData(samples, 0);
             }
         }
 
@@ -95,8 +91,6 @@ namespace Utilities.Audio
 
         #endregion Interop
 
-        private static float[] nativeBuffer;
-
         private static AudioClip currentClip;
 
         private static string[] deviceList = Array.Empty<string>();
@@ -110,7 +104,6 @@ namespace Utilities.Audio
         // ReSharper disable once InconsistentNaming
         public static string[] devices
 #pragma warning restore IDE1006
-#pragma warning disable IDE0025
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
             get => deviceList;
@@ -118,7 +111,6 @@ namespace Utilities.Audio
             get => UnityEngine.Microphone.devices;
 #endif
         }
-#pragma warning restore IDE0025
 
         /// <summary>
         ///   <para>Start Recording with device.</para>
@@ -148,9 +140,7 @@ namespace Utilities.Audio
 
             isRecording = true;
 #if UNITY_WEBGL && !UNITY_EDITOR
-            nativeBuffer = new float[frequency * length];
-            var pcmDataBuffer = Marshal.UnsafeAddrOfPinnedArrayElement(nativeBuffer, 0);
-            var result = Microphone_StartRecording(deviceName, loop, length, frequency, Microphone_OnBufferRead, pcmDataBuffer, nativeBuffer.Length);
+            var result = Microphone_StartRecording(deviceName, loop, frequency, Microphone_OnBufferRead);
 
             if (result > 0)
             {
@@ -160,7 +150,6 @@ namespace Utilities.Audio
             }
 
             currentClip = AudioClip.Create("WebMic_Recording", frequency * length, 1, frequency, false);
-            currentClip.SetData(nativeBuffer, 0);
             return currentClip;
 #else
             return UnityEngine.Microphone.Start(deviceName, loop, length, frequency);
