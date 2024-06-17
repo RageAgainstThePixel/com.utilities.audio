@@ -19,6 +19,7 @@ function queryAudioDevices(onEnumerateDevicesPtr) {
           console.warn(`Failed to get capabilities for device: ${device.label}`);
         }
         var microphone = { name: device.label, device: device, isRecording: false, position: 0, maxFrequency, minFrequency };
+        console.log(microphone);
         for (var i = 0; i < microphoneDevices.length; i++) {
           if (microphoneDevices[i].device.deviceId === microphone.device.deviceId) {
             return;
@@ -35,14 +36,17 @@ function queryAudioDevices(onEnumerateDevicesPtr) {
 
 function getMicrophoneDevice(deviceName) {
   if (!deviceName) {
+    console.warn("UnityMicrophoneLibrary: using default device");
+
     for (var i = 0; i < microphoneDevices.length; i++) {
       if (microphoneDevices[i].device.deviceId === "default") {
         return microphoneDevices[i];
       }
     }
   } else {
+    console.log("UnityMicrophoneLibrary: using device: " + deviceName);
     for (var i = 0; i < microphoneDevices.length; i++) {
-      if (microphoneDevices[i].name === deviceName) {
+      if (microphoneDevices[i].device.label === deviceName) {
         return microphoneDevices[i];
       }
     }

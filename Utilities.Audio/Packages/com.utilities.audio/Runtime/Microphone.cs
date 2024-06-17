@@ -44,11 +44,6 @@ namespace Utilities.Audio
             }
 
             deviceList = tempDeviceList.ToArray();
-
-            foreach (var device in deviceList)
-            {
-                Debug.Log($"[{nameof(Microphone_OnEnumerateDevices)}] {device}");
-            }
         }
 
         [DllImport("__Internal")]
@@ -65,6 +60,14 @@ namespace Utilities.Audio
         [MonoPInvokeCallback(typeof(Microphone_OnBufferReadDelegate))]
         private static void Microphone_OnBufferRead(IntPtr buffer, int length)
         {
+            Debug.Log($"Microphone_OnBufferRead called with length: {length}");
+
+            if (buffer == IntPtr.Zero) 
+            {
+                Debug.LogError("Buffer is null.");
+                return;
+            }
+
             // should be the same, but we will check just for safety
             if (audioBuffer.Length != length)
             {
