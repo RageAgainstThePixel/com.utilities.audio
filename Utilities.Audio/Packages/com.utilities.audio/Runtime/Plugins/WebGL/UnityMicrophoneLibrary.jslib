@@ -74,11 +74,12 @@ var UnityMicrophoneLibrary = {
    * Starts recording from the specified device.
    * @param {string} deviceName The name of the device. If string is null or empty, the default device is used.
    * @param {boolean} loop Indicates whether the recording should continue recording if length is reached, and wrap around and record from the beginning of the buffer.
+   * @param {number} length The length of the recording in seconds.
    * @param {number} frequency The sample rate of the recording.
    * @param {number} onBufferReadPtr The pointer to the buffer read callback.
    * @returns {number} The status code. 0 if successful, 1 if an error occurred, 2 if the browser does not support recording.
   */
-  Microphone_StartRecording: function (deviceName, loop, frequency, onBufferReadPtr) {
+  Microphone_StartRecording: function (deviceName, loop, length, frequency, onBufferReadPtr) {
     console.log("Microphone_StartRecording");
     try {
       if (!navigator.mediaDevices.getUserMedia) {
@@ -87,8 +88,9 @@ var UnityMicrophoneLibrary = {
       }
 
       var microphone = getMicrophoneDevice(deviceName);
-
       microphone.position = 0;
+      microphone.loop = loop;
+      microphone.pcmBuffer = new Float32Array(length * frequency);
 
       if (frequency <= 0) {
         frequency = microphone.maxFrequency;
@@ -104,17 +106,31 @@ var UnityMicrophoneLibrary = {
       navigator.mediaDevices.getUserMedia(constraints).then(stream => {
         const audioContext = new AudioContext({ sampleRate: frequency });
         const source = audioContext.createMediaStreamSource(stream);
-        const processor = audioContext.createScriptProcessor();
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
         processor.onaudioprocess = (event) => {
           const data = event.inputBuffer.getChannelData(0);
-          var buffer = Module._malloc(data.length * data.BYTES_PER_ELEMENT);
-          writeArrayToMemory(data, buffer);
+
+          for (var i = 0; i < data.length; i++) {
+            microphone.pcmBuffer[microphone.position] = data[i];
+            microphone.position++;
+
+            if (microphone.position >= microphone.pcmBuffer.length) {
+              if (microphone.loop) {
+                microphone.position = 0;
+              } else {
+                break;
+              }
+            }
+          }
+
+          var audioBuffer = Module._malloc(microphone.pcmBuffer.length);
+          writeArrayToMemory(data, audioBuffer);
 
           try {
-            Module.dynCall_vii(onBufferReadPtr, buffer, data.length);
+            Module.dynCall_vii(onBufferReadPtr, audioBuffer, audioBuffer.length);
           } finally {
-            Module._free(buffer);
+            Module._free(audioBuffer);
           }
         };
 
@@ -161,6 +177,8 @@ var UnityMicrophoneLibrary = {
         microphone.audioContext = null;
         microphone.stream.getTracks().forEach(track => track.stop());
         microphone.stream = null;
+        microphone.loop = undefined;
+        microphone.pcmBuffer = null;
       } finally {
         microphone.isRecording = false;
       }

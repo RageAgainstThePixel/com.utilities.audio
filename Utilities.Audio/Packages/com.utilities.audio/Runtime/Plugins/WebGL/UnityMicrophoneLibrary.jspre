@@ -3,27 +3,28 @@ function queryAudioDevices(onEnumerateDevicesPtr) {
     console.error("browser not supported.");
     return;
   }
-
   microphoneDevices = [];
-
   navigator.mediaDevices.enumerateDevices().then((devices) => {
     devices.forEach((device) => {
       if (device.kind === 'audioinput') {
+        let maxFrequency = 48000; // Default max frequency
+        let minFrequency = 8000;  // Default min frequency
         try {
           var capabilities = device.getCapabilities();
-          var maxFrequency = capabilities.sampleRate.max;
-          var minFrequency = capabilities.sampleRate.min;
-          var microphone = { name: device.label, device: device, isRecording: false, position: 0, maxFrequency, minFrequency };
-          for (var i = 0; i < microphoneDevices.length; i++) {
-            if (microphoneDevices[i].device.deviceId === microphone.device.deviceId) {
-              return;
-            }
+          if (capabilities && capabilities.sampleRate) {
+            maxFrequency = capabilities.sampleRate.max;
+            minFrequency = capabilities.sampleRate.min;
           }
-
-          microphoneDevices.push(microphone);
         } catch (error) {
           console.warn(`Failed to get capabilities for device: ${device.label}`);
         }
+        var microphone = { name: device.label, device: device, isRecording: false, position: 0, maxFrequency, minFrequency };
+        for (var i = 0; i < microphoneDevices.length; i++) {
+          if (microphoneDevices[i].device.deviceId === microphone.device.deviceId) {
+            return;
+          }
+        }
+        microphoneDevices.push(microphone);
       }
     });
     Module.dynCall_v(onEnumerateDevicesPtr);
@@ -46,7 +47,6 @@ function getMicrophoneDevice(deviceName) {
       }
     }
   }
-
   throw new Error("UnityMicrophoneLibrary: device not found!");
 }
 
@@ -58,25 +58,20 @@ function createWorkletProcessorURL() {
             this.port.onmessage = this.onmessage.bind(this);
             this.buffer = [];
         }
-
         onmessage(event) {
             // Handle messages from the main script if needed
         }
-
         process(inputs, outputs, parameters) {
             const input = inputs[0];
             if (input.length > 0) {
                 const inputData = input[0];
                 const bufferLength = inputData.length;
-
                 // Transfer data to the main thread
                 this.port.postMessage({ data: inputData, bufferLength: bufferLength });
             }
-
             return true;
         }
     }
-
     registerProcessor('my-processor', MyProcessor);
   `;
 

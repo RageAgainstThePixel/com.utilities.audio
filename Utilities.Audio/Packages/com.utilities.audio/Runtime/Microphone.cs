@@ -58,19 +58,24 @@ namespace Utilities.Audio
         private static extern string Microphone_GetDeviceName(int index);
 
         [DllImport("__Internal")]
-        private static extern int Microphone_StartRecording(string deviceName, bool loop, int frequency, Microphone_OnBufferReadDelegate onBufferRead);
+        private static extern int Microphone_StartRecording(string deviceName, bool loop, int length, int frequency, Microphone_OnBufferReadDelegate onBufferRead);
 
         private delegate void Microphone_OnBufferReadDelegate(IntPtr buffer, int length);
 
         [MonoPInvokeCallback(typeof(Microphone_OnBufferReadDelegate))]
         private static void Microphone_OnBufferRead(IntPtr buffer, int length)
         {
-            var samples = new float[length];
-            Marshal.Copy(buffer, samples, 0, length);
+            // should be the same, but we will check just for safety
+            if (audioBuffer.Length != length)
+            {
+                audioBuffer = new float[length];
+            }
+
+            Marshal.Copy(buffer, audioBuffer, 0, length);
 
             if (currentClip != null)
             {
-                currentClip.SetData(samples, 0);
+                currentClip.SetData(audioBuffer, 0);
             }
         }
 
@@ -92,7 +97,7 @@ namespace Utilities.Audio
         #endregion Interop
 
         private static AudioClip currentClip;
-
+        private static float[] audioBuffer = Array.Empty<float>();
         private static string[] deviceList = Array.Empty<string>();
 #endif
         private static bool isRecording;
@@ -140,7 +145,7 @@ namespace Utilities.Audio
 
             isRecording = true;
 #if UNITY_WEBGL && !UNITY_EDITOR
-            var result = Microphone_StartRecording(deviceName, loop, frequency, Microphone_OnBufferRead);
+            var result = Microphone_StartRecording(deviceName, loop, length, frequency, Microphone_OnBufferRead);
 
             if (result > 0)
             {
@@ -149,6 +154,7 @@ namespace Utilities.Audio
                 return null;
             }
 
+            audioBuffer = new float[frequency * length];
             currentClip = AudioClip.Create("WebMic_Recording", frequency * length, 1, frequency, false);
             return currentClip;
 #else
