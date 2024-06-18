@@ -134,6 +134,8 @@ namespace Utilities.Audio
                 {
 #if UNITY_EDITOR
                     defaultSaveLocation = $"{Application.dataPath}/Resources/Recordings";
+#elif UNITY_WEBGL
+                    defaultSaveLocation = string.Empty;
 #else
                     defaultSaveLocation = $"{Application.temporaryCachePath}/Recordings";
 #endif
@@ -225,8 +227,8 @@ namespace Utilities.Audio
                 Debug.LogWarning($"[{nameof(RecordingManager)}] Invalid Frequency {Frequency}. Using {sampleRate}");
             }
 
-            // create dummy clip for recording purposes with a 10 second buffer.
-            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, lengthSec: 10, sampleRate);
+            // create dummy clip for recording purposes with a 1-second buffer.
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, sampleRate);
 
             if (clip == null)
             {

@@ -35,8 +35,6 @@ namespace Utilities.Audio
             set => RecordingManager.DefaultSaveLocation = value;
         }
 
-        private CancellationTokenSource gameObjectCts;
-
         private void OnValidate()
         {
             if (audioSource == null)
@@ -57,9 +55,6 @@ namespace Utilities.Audio
 
             // Event raised whenever a recording is completed.
             RecordingManager.OnClipRecorded += OnClipRecorded;
-
-            // Stops the recording if this game object is destroyed.
-            gameObjectCts = new CancellationTokenSource();
         }
 
         private void Update()
@@ -78,11 +73,6 @@ namespace Utilities.Audio
                     }
                 }
             }
-        }
-
-        private void OnDestroy()
-        {
-            gameObjectCts.Cancel();
         }
 
         private void OnClipRecorded(Tuple<string, AudioClip> recording)
@@ -117,7 +107,7 @@ namespace Utilities.Audio
             try
             {
                 // Starts the recording process
-                var recording = await RecordingManager.StartRecordingAsync<T>(cancellationToken: gameObjectCts.Token);
+                var recording = await RecordingManager.StartRecordingAsync<T>(cancellationToken: destroyCancellationToken);
                 var (path, newClip) = recording;
 
                 if (debug)
