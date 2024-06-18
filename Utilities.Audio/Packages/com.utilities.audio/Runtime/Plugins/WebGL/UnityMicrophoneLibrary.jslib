@@ -17,7 +17,7 @@ var UnityMicrophoneLibrary = {
       }
 
       navigator.mediaDevices.getUserMedia({ audio: true }).then(_ => {
-        console.log("UnityMicrophoneLibrary permissions granted!");
+        // console.log("UnityMicrophoneLibrary permissions granted!");
         queryAudioDevices(onEnumerateDevicesPtr);
 
         navigator.mediaDevices.ondevicechange = (_) => {
@@ -77,10 +77,10 @@ var UnityMicrophoneLibrary = {
    * @param {number} length The length of the recording in seconds.
    * @param {number} frequency The sample rate of the recording.
    * @param {number} onBufferReadPtr The pointer to the buffer read callback.
+   * @param {number} audioBufferPtr The pointer to the audio buffer.
    * @returns {number} The status code. 0 if successful, 1 if an error occurred, 2 if the browser does not support recording.
   */
-  Microphone_StartRecording: function (deviceName, loop, length, frequency, onBufferReadPtr) {
-    console.log("Microphone_StartRecording");
+  Microphone_StartRecording: function (deviceName, loop, length, frequency, onBufferReadPtr, audioBufferPtr) {
     try {
       if (!navigator.mediaDevices.getUserMedia) {
         console.error('UnityMicrophoneLibrary: not supported in this browser!');
@@ -90,8 +90,9 @@ var UnityMicrophoneLibrary = {
       var microphone = getMicrophoneDevice(UTF8ToString(deviceName));
       microphone.position = 0;
       microphone.loop = loop;
-      microphone.pcmBuffer = new Float32Array(length * frequency);
-      microphone.onBufferReadCallback = onBufferReadPtr;
+      microphone.audioBufferPtr = audioBufferPtr;
+      microphone.onBufferReadPtr = onBufferReadPtr;
+      microphone.samples = length * frequency;
 
       if (frequency <= 0) {
         frequency = microphone.maxFrequency;
@@ -100,44 +101,37 @@ var UnityMicrophoneLibrary = {
       var constraints = {
         audio: {
           deviceId: microphone.device.deviceId ? { exact: microphone.device.deviceId } : undefined,
-          sampleRate: { ideal: frequency },
+          sampleRate: frequency,
         }
       };
 
       navigator.mediaDevices.getUserMedia(constraints).then(stream => {
         const audioContext = new AudioContext({ sampleRate: frequency });
         const source = audioContext.createMediaStreamSource(stream);
-        const processor = audioContext.createScriptProcessor();
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
         processor.onaudioprocess = (event) => {
-          if (!microphone.pcmBuffer || microphone.pcmBuffer.length <= 0) {
-            throw new Error("UnityMicrophoneLibrary: pcmBuffer not initialized!");
+          if (!microphone.isRecording || !microphone.audioBufferPtr || !microphone.onBufferReadPtr) {
+            return; // recording was stopped, or buffer is not ready
           }
 
           const data = event.inputBuffer.getChannelData(0); // unity only supports mono
 
           for (var i = 0; i < data.length; i++) {
-            microphone.pcmBuffer[microphone.position] = data[i];
+            Module.HEAPF32[microphone.audioBufferPtr / Float32Array.BYTES_PER_ELEMENT + microphone.position] = data[i];
             microphone.position++;
 
-            if (microphone.position >= microphone.pcmBuffer.length) {
+            if (microphone.position >= microphone.samples) {
               if (microphone.loop) {
                 microphone.position = 0;
               } else {
+                microphone.position = microphone.samples - 1;
                 break;
               }
             }
           }
 
-          console.log(`Microphone position: ${microphone.position} | data read: ${data.length}`);
-          var audioBuffer = Module._malloc(microphone.pcmBuffer.length * 4);
-          console.log(`Allocated buffer at: ${audioBuffer} with length: ${microphone.pcmBuffer.length}`);
-          try {
-            writeArrayToMemory(microphone.pcmBuffer, audioBuffer);
-            Module.dynCall_vii(microphone.onBufferReadCallback, audioBuffer, audioBuffer.length);
-          } finally {
-            Module._free(audioBuffer);
-          }
+          Module.dynCall_vi(microphone.onBufferReadPtr, microphone.position);
         };
 
         source.connect(processor);
@@ -149,6 +143,7 @@ var UnityMicrophoneLibrary = {
         microphone.stream = stream;
       }).catch(error => {
         console.error(error);
+        this.Microphone_StopRecording(deviceName);
       });
 
       microphone.isRecording = true;
@@ -164,12 +159,11 @@ var UnityMicrophoneLibrary = {
    * @returns {number} The status code. 0 if successful, 1 if an error occurred, 2 if no recording is in progress.
    */
   Microphone_StopRecording: function (deviceName) {
-    console.log("Microphone_StopRecording");
     try {
       var microphone = getMicrophoneDevice(UTF8ToString(deviceName));
 
       if (!microphone.isRecording) {
-        console.warn("UnityMicrophoneLibrary: no recording in progress")
+        console.warn("UnityMicrophoneLibrary: no recording in progress");
         return 2;
       }
 
@@ -180,11 +174,11 @@ var UnityMicrophoneLibrary = {
         microphone.stream.getTracks().forEach(track => track.stop());
       } finally {
         microphone.isRecording = false;
-        microphone.onBufferReadCallback = null;
+        microphone.audioBufferPtr = null;
+        microphone.onBufferReadPtr = null;
         microphone.audioContext = null;
-        microphone.pcmBuffer = null;
         microphone.processor = null;
-        microphone.loop = undefined;
+        microphone.loop = null;
         microphone.source = null;
         microphone.stream = null;
       }
@@ -207,48 +201,6 @@ var UnityMicrophoneLibrary = {
     } catch (error) {
       console.error(error);
       return false;
-    }
-  },
-  /**
-   * Gets the maximum frequency of the microphone.
-   * @param {string} deviceName The name of the device to get the maximum frequency for.
-   * @returns {number} The maximum frequency of the microphone.
-   */
-  Microphone_GetMaxFrequency: function (deviceName) {
-    try {
-      var microphone = getMicrophoneDevice(UTF8ToString(deviceName));
-      return microphone.maxFrequency;
-    } catch (error) {
-      console.error(error);
-      return -1;
-    }
-  },
-  /**
-   * Gets the minimum frequency of the microphone.
-   * @param {string} deviceName The name of the device to get the minimum frequency for.
-   * @returns {number} The minimum frequency of the microphone.
-   */
-  Microphone_GetMinFrequency: function (deviceName) {
-    try {
-      var microphone = getMicrophoneDevice(UTF8ToString(deviceName));
-      return microphone.minFrequency;
-    } catch (error) {
-      console.error(error);
-      return -1;
-    }
-  },
-  /**
-   * Gets the position of the microphone.
-   * @param {string} deviceName The name of the device to get the position for.
-   * @returns {number} The position of the microphone.
-   */
-  Microphone_GetPosition: function (deviceName) {
-    try {
-      var microphone = getMicrophoneDevice(UTF8ToString(deviceName));
-      return microphone.position;
-    } catch (error) {
-      console.error(error);
-      return -1;
     }
   }
 }

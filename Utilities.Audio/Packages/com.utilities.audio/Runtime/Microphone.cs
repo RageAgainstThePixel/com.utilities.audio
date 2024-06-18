@@ -53,32 +53,17 @@ namespace Utilities.Audio
         private static extern string Microphone_GetDeviceName(int index);
 
         [DllImport("__Internal")]
-        private static extern int Microphone_StartRecording(string deviceName, bool loop, int length, int frequency, Microphone_OnBufferReadDelegate onBufferRead);
+        private static extern int Microphone_StartRecording(string deviceName, bool loop, int length, int frequency, Microphone_OnBufferReadDelegate onBufferRead, float[] audioBufferPtr);
 
-        private delegate void Microphone_OnBufferReadDelegate(IntPtr buffer, int length);
+        private delegate void Microphone_OnBufferReadDelegate(int position);
 
         [MonoPInvokeCallback(typeof(Microphone_OnBufferReadDelegate))]
-        private static void Microphone_OnBufferRead(IntPtr buffer, int length)
+        private static void Microphone_OnBufferRead(int position)
         {
-            Debug.Log($"Microphone_OnBufferRead called with length: {length}");
-
-            if (buffer == IntPtr.Zero) 
-            {
-                Debug.LogError("Buffer is null.");
-                return;
-            }
-
-            // should be the same, but we will check just for safety
-            if (audioBuffer.Length != length)
-            {
-                audioBuffer = new float[length];
-            }
-
-            Marshal.Copy(buffer, audioBuffer, 0, length);
-
             if (currentClip != null)
             {
                 currentClip.SetData(audioBuffer, 0);
+                currentPosition = position;
             }
         }
 
@@ -89,17 +74,12 @@ namespace Utilities.Audio
         private static extern bool Microphone_IsRecording(string deviceName);
 
         [DllImport("__Internal")]
-        private static extern int Microphone_GetMaxFrequency(string deviceName);
-
-        [DllImport("__Internal")]
-        private static extern int Microphone_GetMinFrequency(string deviceName);
-
-        [DllImport("__Internal")]
         private static extern int Microphone_GetPosition(string deviceName);
 
         #endregion Interop
 
         private static AudioClip currentClip;
+        private static int currentPosition = -1;
         private static float[] audioBuffer = Array.Empty<float>();
         private static string[] deviceList = Array.Empty<string>();
 #endif
@@ -148,7 +128,19 @@ namespace Utilities.Audio
 
             isRecording = true;
 #if UNITY_WEBGL && !UNITY_EDITOR
-            var result = Microphone_StartRecording(deviceName, loop, length, frequency, Microphone_OnBufferRead);
+            currentPosition = -1;
+            var samples = frequency * length;
+            audioBuffer = new float[samples];
+            currentClip = AudioClip.Create("WebMic_Recording", samples, 1, frequency, false);
+
+            if (audioBuffer.Length != currentClip.samples)
+            {
+                Debug.LogError($"Failed to create audioBuffer with proper size! {audioBuffer.Length} != {currentClip.samples}");
+                UnityEngine.Object.Destroy(currentClip);
+                return null;
+            }
+
+            var result = Microphone_StartRecording(deviceName, loop, length, frequency, Microphone_OnBufferRead, audioBuffer);
 
             if (result > 0)
             {
@@ -157,8 +149,6 @@ namespace Utilities.Audio
                 return null;
             }
 
-            audioBuffer = new float[frequency * length];
-            currentClip = AudioClip.Create("WebMic_Recording", frequency * length, 1, frequency, false);
             return currentClip;
 #else
             return UnityEngine.Microphone.Start(deviceName, loop, length, frequency);
@@ -212,8 +202,9 @@ namespace Utilities.Audio
         public static void GetDeviceCaps(string deviceName, out int minFreq, out int maxFreq)
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-            minFreq = Microphone_GetMinFrequency(deviceName);
-            maxFreq = Microphone_GetMaxFrequency(deviceName);
+            // WebGL only supports 44100 Hz
+            minFreq = 44100;
+            maxFreq = 44100;
 #else
             UnityEngine.Microphone.GetDeviceCaps(deviceName, out minFreq, out maxFreq);
 #endif
@@ -227,7 +218,7 @@ namespace Utilities.Audio
         {
             if (!isRecording) { return 0; }
 #if UNITY_WEBGL && !UNITY_EDITOR
-            return Microphone_GetPosition(deviceName);
+            return currentPosition;
 #else
             return UnityEngine.Microphone.GetPosition(deviceName);
 #endif

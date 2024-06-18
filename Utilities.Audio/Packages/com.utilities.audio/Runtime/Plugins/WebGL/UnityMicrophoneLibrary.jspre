@@ -7,8 +7,8 @@ function queryAudioDevices(onEnumerateDevicesPtr) {
   navigator.mediaDevices.enumerateDevices().then((devices) => {
     devices.forEach((device) => {
       if (device.kind === 'audioinput') {
-        let maxFrequency = 48000; // Default max frequency
-        let minFrequency = 8000;  // Default min frequency
+        let maxFrequency = 44100; // Default max frequency
+        let minFrequency = 48000;  // Default min frequency
         try {
           var capabilities = device.getCapabilities();
           if (capabilities && capabilities.sampleRate) {
@@ -36,15 +36,12 @@ function queryAudioDevices(onEnumerateDevicesPtr) {
 
 function getMicrophoneDevice(deviceName) {
   if (!deviceName) {
-    console.warn("UnityMicrophoneLibrary: using default device");
-
     for (var i = 0; i < microphoneDevices.length; i++) {
       if (microphoneDevices[i].device.deviceId === "default") {
         return microphoneDevices[i];
       }
     }
   } else {
-    console.log("UnityMicrophoneLibrary: using device: " + deviceName);
     for (var i = 0; i < microphoneDevices.length; i++) {
       if (microphoneDevices[i].device.label === deviceName) {
         return microphoneDevices[i];
