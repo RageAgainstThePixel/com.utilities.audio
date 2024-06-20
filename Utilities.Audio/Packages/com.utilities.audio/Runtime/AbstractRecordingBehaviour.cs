@@ -1,7 +1,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -34,6 +33,12 @@ namespace Utilities.Audio
             get => RecordingManager.DefaultSaveLocation;
             set => RecordingManager.DefaultSaveLocation = value;
         }
+
+#if !UNITY_2022_1_OR_NEWER
+        private System.Threading.CancellationTokenSource lifetimeCancellationTokenSource = new();
+        // ReSharper disable once InconsistentNaming
+        private System.Threading.CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
+#endif
 
         private void OnValidate()
         {
@@ -74,6 +79,14 @@ namespace Utilities.Audio
                 }
             }
         }
+
+#if !UNITY_2022_1_OR_NEWER
+        private void OnDestroy()
+        {
+            lifetimeCancellationTokenSource.Cancel();
+            lifetimeCancellationTokenSource.Dispose();
+        }
+#endif
 
         private void OnClipRecorded(Tuple<string, AudioClip> recording)
         {
