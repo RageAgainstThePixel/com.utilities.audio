@@ -35,6 +35,12 @@ namespace Utilities.Audio
             set => RecordingManager.DefaultSaveLocation = value;
         }
 
+#if !UNITY_2022_1_OR_NEWER
+        private CancellationTokenSource lifetimeCancellationTokenSource = new();
+        // ReSharper disable once InconsistentNaming
+        private CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
+#endif
+
         private void OnValidate()
         {
             if (audioSource == null)
@@ -74,6 +80,14 @@ namespace Utilities.Audio
                 }
             }
         }
+
+#if !UNITY_2022_1_OR_NEWER
+        private void OnDestroy()
+        {
+            lifetimeCancellationTokenSource.Cancel();
+            lifetimeCancellationTokenSource.Dispose();
+        }
+#endif
 
         private void OnClipRecorded(Tuple<string, AudioClip> recording)
         {
