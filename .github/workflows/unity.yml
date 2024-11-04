@@ -14,6 +14,7 @@ concurrency:
   cancel-in-progress: ${{ (github.event_name == 'pull_request' || github.event.action == 'synchronize') }}
 jobs:
   build:
+    name: ${{ matrix.unity-versions }} ${{ matrix.build-target }} ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
