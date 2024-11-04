@@ -16,6 +16,17 @@ var UnityMicrophoneLibrary = {
         return 2;
       }
 
+      // Thanks to De-Panther for the following code
+      // Checks if specific dynCall functions exist,
+      // if not, it will create them using the getWasmTableEntry function.
+      // https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
+      Module.dynCall_v = Module.dynCall_v || function (cb) {
+        return getWasmTableEntry(cb)();
+      };
+      Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
+        return getWasmTableEntry(cb)(arg1);
+      };
+
       navigator.mediaDevices.getUserMedia({ audio: true }).then(_ => {
         // console.log("UnityMicrophoneLibrary permissions granted!");
         queryAudioDevices(onEnumerateDevicesPtr);
