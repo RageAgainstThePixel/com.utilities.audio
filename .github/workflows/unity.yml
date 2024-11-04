@@ -14,41 +14,41 @@ concurrency:
   cancel-in-progress: ${{ (github.event_name == 'pull_request' || github.event.action == 'synchronize') }}
 jobs:
   build:
-    name: ${{ matrix.unity-versions }} ${{ matrix.build-target }} ${{ matrix.os }}
+    name: ${{ matrix.unity-version }} ${{ matrix.build-target }} ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-15]
-        unity-versions: [2021.x, 2022.x, 6000.x]
+        unity-version: [2021.x, 2022.x, 6000.x]
         include:
           - os: windows-latest
             build-target: StandaloneWindows64
           - os: macos-15
             build-target: StandaloneOSX
           - os: ubuntu-latest
-            unity-versions: 2021.x
+            unity-version: 2021.x
             build-target: StandaloneLinux64
           - os: ubuntu-latest
-            unity-versions: 2021.x
+            unity-version: 2022.x
             build-target: StandaloneLinux64
           - os: ubuntu-latest
-            unity-versions: 6000.x
+            unity-version: 6000.x
             build-target: StandaloneLinux64
           - os: ubuntu-latest
-            unity-versions: 2021.x
+            unity-version: 2021.x
             build-target: WebGL
           - os: ubuntu-latest
-            unity-versions: 2022.x
+            unity-version: 2022.x
             build-target: WebGL
           - os: ubuntu-latest
-            unity-versions: 6000.x
+            unity-version: 6000.x
             build-target: WebGL
     steps:
       - uses: actions/checkout@v4
       - uses: RageAgainstThePixel/unity-setup@v1
         with:
-          unity-version: ${{ matrix.unity-versions }}
+          unity-version: ${{ matrix.unity-version }}
           build-targets: ${{ matrix.build-target }}
       - uses: RageAgainstThePixel/activate-unity-license@v1
         with:
@@ -78,7 +78,7 @@ jobs:
         with:
           compression-level: 0
           retention-days: 1
-          name: '${{ github.run_number }}.${{ github.run_attempt }}-${{ matrix.os }}-${{ matrix.unity-versions }}-${{ matrix.build-target }}-Artifacts'
+          name: '${{ github.run_number }}.${{ github.run_attempt }}-${{ matrix.os }}-${{ matrix.unity-version }}-${{ matrix.build-target }}-Artifacts'
           path: |
             ${{ github.workspace }}/**/*.log
             ${{ github.workspace }}/**/*.xml
