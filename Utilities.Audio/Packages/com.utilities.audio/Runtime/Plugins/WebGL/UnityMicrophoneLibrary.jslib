@@ -4,7 +4,7 @@ var UnityMicrophoneLibrary = {
    */
   $microphoneDevices: [],
   /**
-   * Initializes the dynCall callback function table lookups.
+   * Initializes the dynCall_* function table lookups.
    * Thanks to De-Panther for the following code.
    * Checks if specific dynCall functions exist,
    * if not, it will create them using the getWasmTableEntry function.
