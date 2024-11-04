@@ -21,12 +21,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-15]
         unity-versions: [2021.x, 2022.x, 6000.x]
-        bulid-target: []
+        bulid-target: [WebGL]
         include:
           - os: ubuntu-latest
             build-target: StandaloneLinux64
-          - os: ubuntu-latest
-            build-target: WebGL
           - os: windows-latest
             build-target: StandaloneWindows64
           - os: macos-15
