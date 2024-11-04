@@ -4,6 +4,22 @@ var UnityMicrophoneLibrary = {
    */
   $microphoneDevices: [],
   /**
+   * Initializes the dynCall callback function table lookups.
+   * Thanks to De-Panther for the following code.
+   * Checks if specific dynCall functions exist,
+   * if not, it will create them using the getWasmTableEntry function.
+   * @see https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
+   * @returns {void}
+  */
+  initializeDynCalls: function () {
+    Module.dynCall_v = Module.dynCall_v || function (cb) {
+      return getWasmTableEntry(cb)();
+    };
+    Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
+      return getWasmTableEntry(cb)(arg1);
+    };
+  },
+  /**
    * Initializes the Microphone context. Will alert the user if the browser does not support recording.
    * Sets up an interval to check the audio context state and resume it if it is suspended or interrupted.
    * @param {number} onEnumerateDevicesPtr The pointer to the enumerate devices callback.
@@ -16,16 +32,7 @@ var UnityMicrophoneLibrary = {
         return 2;
       }
 
-      // Thanks to De-Panther for the following code
-      // Checks if specific dynCall functions exist,
-      // if not, it will create them using the getWasmTableEntry function.
-      // https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
-      Module.dynCall_v = Module.dynCall_v || function (cb) {
-        return getWasmTableEntry(cb)();
-      };
-      Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
-        return getWasmTableEntry(cb)(arg1);
-      };
+      this.initializeDynCalls();
 
       navigator.mediaDevices.getUserMedia({ audio: true }).then(_ => {
         // console.log("UnityMicrophoneLibrary permissions granted!");
