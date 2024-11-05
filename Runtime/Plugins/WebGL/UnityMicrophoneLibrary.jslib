@@ -16,6 +16,8 @@ var UnityMicrophoneLibrary = {
         return 2;
       }
 
+      initializeDynCalls();
+
       navigator.mediaDevices.getUserMedia({ audio: true }).then(_ => {
         // console.log("UnityMicrophoneLibrary permissions granted!");
         queryAudioDevices(onEnumerateDevicesPtr);

@@ -1,3 +1,20 @@
+/**
+ * Initializes the dynCall_* function table lookups.
+ * Thanks to De-Panther for the following code.
+ * Checks if specific dynCall functions exist,
+ * if not, it will create them using the getWasmTableEntry function.
+ * @see https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
+ * @returns {void}
+*/
+function initializeDynCalls() {
+  Module.dynCall_v = Module.dynCall_v || function (cb) {
+    return getWasmTableEntry(cb)();
+  };
+  Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
+    return getWasmTableEntry(cb)(arg1);
+  };
+}
+
 function queryAudioDevices(onEnumerateDevicesPtr) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
     console.error("browser not supported.");
