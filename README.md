@@ -39,10 +39,13 @@ On its own this package doesn't do too much but provide base functionality for r
 
 - [Encoder Packages](#encoder-packages)
 - [Recording Manager](#recording-manager)
+  - [Steam Save To Disk](#start-recording-while-streaming-to-disk)
+  - [Stream Callback](#start-recording-and-callback-each-sample)
 - [Recording Behaviour](#recording-behaviour)
 - [Audio Clip Extensions](#audio-clip-extensions)
   - [Encode PCM](#encode-pcm)
   - [Decode PCM](#decode-pcm)
+- [IEncoder](#iencoder)
 
 ## Encoder Packages
 
@@ -82,7 +85,7 @@ Supports 8, 16, 24, and 32 bit sample sizes.
 ### Encode PCM
 
 ```csharp
-// Encodes the <see cref="AudioClip"/> to raw PCM bytes.
+// Encodes the audioClip to raw PCM bytes.
 var pcmBytes = audioClip.EncodeToPCM();
 ```
 
@@ -93,7 +96,7 @@ var pcmBytes = audioClip.EncodeToPCM();
 audioClip.DecodeFromPCM(pcmBytes);
 ```
 
-### IEncoder
+## IEncoder
 
 This package also includes an `IEncoder` interface to allow for custom encoders to be implemented. This interface is used in the [encoder packages](#encoder-packages) to allow for custom encoders to be implemented.
 
