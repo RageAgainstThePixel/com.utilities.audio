@@ -11,11 +11,11 @@ namespace Utilities.Audio
 {
     public static class RecordingManager
     {
-        private static readonly ConcurrentDictionary<Type, IEncoder> EncoderCache = new ConcurrentDictionary<Type, IEncoder>();
+        private static readonly ConcurrentDictionary<Type, IEncoder> encoderCache = new();
 
         private static int maxRecordingLength = 300;
 
-        private static readonly object recordingLock = new object();
+        private static readonly object recordingLock = new();
 
         private static CancellationTokenSource cancellationTokenSource;
 
@@ -152,26 +152,25 @@ namespace Utilities.Audio
         public static string DefaultRecordingDevice { get; set; }
 
         /// <summary>
-        /// Starts the recording process.
+        /// Starts the recording process and saves a new clip to disk.
         /// </summary>
         /// <param name="clipName">Optional, name for the clip.</param>
         /// <param name="saveDirectory">Optional, the directory to save the clip.</param>
         /// <param name="callback">Optional, callback when recording is complete.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async void StartRecording<T>(string clipName = null, string saveDirectory = null, Action<Tuple<string, AudioClip>> callback = null, CancellationToken cancellationToken = default) where T : IEncoder
+        public static async void StartRecording<TEncoder>(string clipName = null, string saveDirectory = null, Action<Tuple<string, AudioClip>> callback = null, CancellationToken cancellationToken = default) where TEncoder : IEncoder
         {
-            var result = await StartRecordingAsync<T>(clipName, saveDirectory, cancellationToken);
-            await Awaiters.UnityMainThread;
+            var result = await StartRecordingAsync<TEncoder>(clipName, saveDirectory, cancellationToken).ConfigureAwait(true);
             callback?.Invoke(result);
         }
 
         /// <summary>
-        /// Starts the recording process.
+        /// Starts the recording process and saves a new clip to disk.
         /// </summary>
         /// <param name="clipName">Optional, name for the clip.</param>
         /// <param name="saveDirectory">Optional, the directory to save the clip.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async Task<Tuple<string, AudioClip>> StartRecordingAsync<T>(string clipName = null, string saveDirectory = null, CancellationToken cancellationToken = default) where T : IEncoder
+        public static async Task<Tuple<string, AudioClip>> StartRecordingAsync<TEncoder>(string clipName = null, string saveDirectory = null, CancellationToken cancellationToken = default) where TEncoder : IEncoder
         {
             if (IsBusy)
             {
@@ -260,13 +259,13 @@ namespace Utilities.Audio
 
             try
             {
-                if (!EncoderCache.TryGetValue(typeof(T), out var encoder))
+                if (!encoderCache.TryGetValue(typeof(TEncoder), out var encoder))
                 {
-                    encoder = Activator.CreateInstance<T>();
-                    EncoderCache.TryAdd(typeof(T), encoder);
+                    encoder = Activator.CreateInstance<TEncoder>();
+                    encoderCache.TryAdd(typeof(TEncoder), encoder);
                 }
 
-                return await encoder.StreamSaveToDiskAsync(clip, saveDirectory, cancellationTokenSource.Token, OnClipRecorded).ConfigureAwait(false);
+                return await encoder.StreamSaveToDiskAsync(InitializeRecording(clip), saveDirectory, OnClipRecorded, cancellationTokenSource.Token);
             }
             catch (Exception e)
             {
@@ -295,12 +294,142 @@ namespace Utilities.Audio
         }
 
         /// <summary>
+        /// Starts the recording process and buffers the samples back as <see cref="ReadOnlyMemory{Tbytes}"/>.
+        /// </summary>
+        /// <param name="bufferCallback">The buffer callback with new sample data.</param>
+        /// <param name="cancellationToken">Optional, task cancellation token.</param>
+        public static async void StartRecordingStream<TEncoder>(Action<ReadOnlyMemory<byte>> bufferCallback, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+            => await StartRecordingStreamAsync<TEncoder>(bufferCallback, cancellationToken).ConfigureAwait(true);
+
+        /// <summary>
+        /// Starts the recording process and buffers the samples back as <see cref="ReadOnlyMemory{Tbytes}"/>.
+        /// </summary>
+        /// <param name="bufferCallback">The buffer callback with new sample data.</param>
+        /// <param name="cancellationToken">Optional, task cancellation token.</param>
+        public static async Task StartRecordingStreamAsync<TEncoder>(Action<ReadOnlyMemory<byte>> bufferCallback, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+        {
+            if (IsBusy)
+            {
+                Debug.LogWarning($"[{nameof(RecordingManager)}] Recording already in progress!");
+                return;
+            }
+
+            lock (recordingLock)
+            {
+                isRecording = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(DefaultRecordingDevice))
+            {
+                DefaultRecordingDevice = null;
+            }
+
+            if (Microphone.devices.Length == 0)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] No devices found to record from!");
+                return;
+            }
+
+            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
+
+            if (EnableDebug)
+            {
+                var deviceName = string.IsNullOrWhiteSpace(DefaultRecordingDevice)
+                    ? string.Join(", ", Microphone.devices)
+                    : DefaultRecordingDevice;
+                Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq}");
+            }
+
+            var sampleRate = Frequency;
+
+            if (sampleRate <= minFreq)
+            {
+                sampleRate = minFreq;
+            }
+
+            if (sampleRate >= maxFreq)
+            {
+                sampleRate = maxFreq;
+            }
+
+            if (EnableDebug && sampleRate != Frequency)
+            {
+                Debug.LogWarning($"[{nameof(RecordingManager)}] Invalid Frequency {Frequency}. Using {sampleRate}");
+            }
+
+            // create dummy clip for recording purposes with a 1-second buffer.
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, sampleRate);
+
+            if (clip == null)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] Failed to initialize Unity Microphone!");
+                return;
+            }
+
+            clip.name = Guid.NewGuid().ToString();
+            var clipName = clip.name;
+
+            if (EnableDebug)
+            {
+                Debug.Log($"Created new clip {clip.name} | clip freq: {clip.frequency} | samples: {clip.samples}");
+            }
+
+            lock (recordingLock)
+            {
+                cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            }
+
+#if UNITY_EDITOR
+            if (EnableDebug)
+            {
+                Debug.Log($"[{nameof(RecordingManager)}] <>Disable auto refresh<>");
+            }
+
+            UnityEditor.AssetDatabase.DisallowAutoRefresh();
+#endif
+
+            try
+            {
+                if (!encoderCache.TryGetValue(typeof(TEncoder), out var encoder))
+                {
+                    encoder = Activator.CreateInstance<TEncoder>();
+                    encoderCache.TryAdd(typeof(TEncoder), encoder);
+                }
+
+                await encoder.StreamRecordingAsync(InitializeRecording(clip), bufferCallback, cancellationTokenSource.Token);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] Failed to record {clipName}!\n{e}");
+            }
+            finally
+            {
+                lock (recordingLock)
+                {
+                    isRecording = false;
+                    isProcessing = false;
+                }
+#if UNITY_EDITOR
+                await Awaiters.UnityMainThread;
+
+                if (EnableDebug)
+                {
+                    Debug.Log($"[{nameof(RecordingManager)}] <>Enable auto refresh<>");
+                }
+
+                UnityEditor.AssetDatabase.AllowAutoRefresh();
+#endif
+            }
+        }
+
+        /// <summary>
         /// Ends the recording process if in progress.
         /// </summary>
         public static void EndRecording()
         {
             if (!IsRecording)
             {
+                Debug.LogWarning("No recording in progress!");
                 return;
             }
 
@@ -316,6 +445,30 @@ namespace Utilities.Audio
                     }
                 }
             }
+        }
+
+        private static ClipData InitializeRecording(AudioClip micInputClip)
+        {
+            var device = DefaultRecordingDevice;
+
+            if (!Microphone.IsRecording(device))
+            {
+                throw new InvalidOperationException("Microphone is not initialized!");
+            }
+
+            if (IsProcessing)
+            {
+                throw new AccessViolationException("Recording already in progress!");
+            }
+
+            var clipData = new ClipData(micInputClip, device);
+
+            if (EnableDebug)
+            {
+                Debug.Log($"[{nameof(RecordingManager)}] Initializing data for {clipData.Name}. Channels: {clipData.Channels}, Sample Rate: {clipData.SampleRate}, Sample buffer size: {clipData.BufferSize}, Max Sample Length: {clipData.MaxSamples}");
+            }
+
+            return clipData;
         }
     }
 }
