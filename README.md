@@ -51,13 +51,28 @@ On its own this package doesn't do too much but provide base functionality for r
 
 ## Recording Manager
 
-This class is meant to be used anywhere you want to be able to record audio. You will need to have one of the [encoder packages](#encoder-packages) to be able to record and encode to the specific format.
+This class is meant to be used anywhere you want to be able to record audio. You can use one of the [encoder packages](#encoder-packages) to be able to record and encode to the specific format other than PCM.
 
-A perfect example implementation on how to use this is in the `AbstractRecordingBehaviour` class.
+A perfect example implementation on how to use the `RecordingManager` is in the `AbstractRecordingBehaviour<TEncoder>` class.
+
+### Start Recording while streaming to disk
+
+```csharp
+var (savedPath, recordedClip) = await RecordingManager.StartRecordingAsync<PCMEncoder>("my recording", "directory/to/save");
+```
+
+### Start Recording and callback each sample
+
+```csharp
+using var stream = new MemoryStream();
+await RecordingManager.StartRecordingStreamAsync<PCMEncoder>(sample => stream.Write(sample, 0, sample.Length));
+```
 
 ## Recording Behaviour
 
-A basic `AbstractRecordingBehaviour` is included in this package to make it very simple to add recording to any GameObject in the scene. This class is really meant to be a good baseline example of how to use the `RecordingManager`. This abstract class is implemented in each of the [encoder packages](#encoder-packages) for simplicity and ease of use.
+A basic `PCMRecordingBehaviour` is included in this package to enable basic recording to any project. Simply add this component to any GameObject in your scene. This class inherits from `AbstractRecordingBehaviour<TEncoder>`.
+
+`AbstractRecordingBehaviour<TEncoder>` is really meant to be a good baseline example of how to use the `RecordingManager`. This abstract class is implemented in each of the [encoder packages](#encoder-packages) for simplicity and ease of use. You can use this class as an example of how to implement your own recording behaviours.
 
 ## Audio Clip Extensions
 
@@ -77,3 +92,12 @@ var pcmBytes = audioClip.EncodeToPCM();
 // Decodes the raw PCM byte data and sets it to the audioClip.
 audioClip.DecodeFromPCM(pcmBytes);
 ```
+
+### IEncoder
+
+This package also includes an `IEncoder` interface to allow for custom encoders to be implemented. This interface is used in the [encoder packages](#encoder-packages) to allow for custom encoders to be implemented.
+
+The interface contains the following methods:
+
+- **StreamRecordingAsync**: Streams audio microphone recording input to memory, with bufferCallbacks for each sample.
+- **StreamSaveToDiskAsync**: Streams audio microphone recording input to disk, with callback when recording has been saved to disk.
