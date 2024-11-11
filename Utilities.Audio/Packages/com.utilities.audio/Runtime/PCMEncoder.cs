@@ -224,7 +224,6 @@ namespace Utilities.Audio
                 throw new InvalidOperationException($"{nameof(StreamSaveToDiskAsync)} can only be called from {nameof(RecordingManager.StartRecordingAsync)}");
             }
 
-
             RecordingManager.IsProcessing = true;
 
             try
@@ -261,7 +260,7 @@ namespace Utilities.Audio
 
             try
             {
-                Stream finalStream;
+                Stream outStream;
 
                 if (!string.IsNullOrWhiteSpace(saveDirectory))
                 {
@@ -278,16 +277,16 @@ namespace Utilities.Audio
                         File.Delete(outputPath);
                     }
 
-                    finalStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+                    outStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
                 }
                 else
                 {
-                    finalStream = new MemoryStream();
+                    outStream = new MemoryStream();
                 }
 
                 int totalSampleCount;
                 var finalSamples = new float[clipData.MaxSamples];
-                var writer = new BinaryWriter(finalStream);
+                var writer = new BinaryWriter(outStream);
 
                 try
                 {
@@ -320,7 +319,7 @@ namespace Utilities.Audio
                     }
 
                     await writer.DisposeAsync().ConfigureAwait(false);
-                    await finalStream.DisposeAsync().ConfigureAwait(false);
+                    await outStream.DisposeAsync().ConfigureAwait(false);
                 }
 
                 if (RecordingManager.EnableDebug)
