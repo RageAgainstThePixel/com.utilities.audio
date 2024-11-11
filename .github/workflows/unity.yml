@@ -65,7 +65,7 @@ jobs:
           $version = [System.Management.Automation.SemanticVersion]$versionString
           $unity6 = [System.Management.Automation.SemanticVersion]'6000.0.0'
           if ($version -ge $unity6) {
-            openupm add com.unity.ugui@2.0.0 --verbose
+            openupm add com.unity.ugui --verbose
           } else {
             openupm add com.unity.textmeshpro@3.0.9 --verbose
           }
