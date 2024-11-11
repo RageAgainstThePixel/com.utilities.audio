@@ -14,7 +14,10 @@ function initializeDynCalls() {
     return getWasmTableEntry(cb)(arg1);
   };
 }
-
+/**
+ * Queries the audio devices and populates the microphoneDevices array.
+ * @param onEnumerateDevicesPtr The pointer to the onEnumerateDevices function.
+ */
 function queryAudioDevices(onEnumerateDevicesPtr) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
     console.error("browser not supported.");
@@ -50,7 +53,11 @@ function queryAudioDevices(onEnumerateDevicesPtr) {
     console.error(error);
   });
 };
-
+/**
+ * Gets the microphone device by name.
+ * @param deviceName The name of the microphone device.
+ * @returns The microphone device.
+ */
 function getMicrophoneDevice(deviceName) {
   if (!deviceName) {
     for (var i = 0; i < microphoneDevices.length; i++) {
@@ -67,7 +74,10 @@ function getMicrophoneDevice(deviceName) {
   }
   throw new Error("UnityMicrophoneLibrary: device not found!");
 }
-
+/**
+ * Creates a processor worklet for the microphone device.
+ * @returns The MediaStream.
+ */
 function createWorkletProcessorURL() {
   const workletProcessorCode = `
     class MyProcessor extends AudioWorkletProcessor {
@@ -92,7 +102,12 @@ function createWorkletProcessorURL() {
     }
     registerProcessor('my-processor', MyProcessor);
   `;
-
   const blob = new Blob([workletProcessorCode], { type: 'application/javascript' });
   return URL.createObjectURL(blob);
 }
+/**
+ * Initializes DynCalls back to Unity in the Module.preRun.
+ */
+Module['preRun'].push(function () {
+  initializeDynCalls();
+});
