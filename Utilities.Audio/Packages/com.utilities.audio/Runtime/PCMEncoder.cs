@@ -255,27 +255,38 @@ namespace Utilities.Audio
                 throw new InvalidOperationException($"{nameof(StreamSaveToDiskAsync)} can only be called from {nameof(RecordingManager.StartRecordingAsync)}");
             }
 
+            var outputPath = string.Empty;
             RecordingManager.IsProcessing = true;
             Tuple<string, AudioClip> result = null;
 
             try
             {
-                if (!Directory.Exists(saveDirectory))
+                Stream finalStream;
+
+                if (!string.IsNullOrWhiteSpace(saveDirectory))
                 {
-                    Directory.CreateDirectory(saveDirectory);
+                    if (!Directory.Exists(saveDirectory))
+                    {
+                        Directory.CreateDirectory(saveDirectory);
+                    }
+
+                    outputPath = $"{saveDirectory}/{clipData.Name}.raw";
+
+                    if (File.Exists(outputPath))
+                    {
+                        Debug.LogWarning($"[{nameof(RecordingManager)}] {outputPath} already exists, attempting to delete...");
+                        File.Delete(outputPath);
+                    }
+
+                    finalStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
                 }
-
-                var outputPath = $"{saveDirectory}/{clipData.Name}.raw";
-
-                if (File.Exists(outputPath))
+                else
                 {
-                    Debug.LogWarning($"[{nameof(RecordingManager)}] {outputPath} already exists, attempting to delete...");
-                    File.Delete(outputPath);
+                    finalStream = new MemoryStream();
                 }
 
                 int totalSampleCount;
                 var finalSamples = new float[clipData.MaxSamples];
-                var finalStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
                 var writer = new BinaryWriter(finalStream);
 
                 try
