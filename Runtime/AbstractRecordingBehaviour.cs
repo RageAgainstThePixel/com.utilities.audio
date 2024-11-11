@@ -9,9 +9,9 @@ namespace Utilities.Audio
     /// <summary>
     /// A simple implementation of a recording behaviour.
     /// </summary>
-    /// <typeparam name="T"><see cref="IEncoder"/> to use for recording.</typeparam>
+    /// <typeparam name="TEncoder"><see cref="IEncoder"/> to use for recording.</typeparam>
     [RequireComponent(typeof(AudioSource))]
-    public abstract class AbstractRecordingBehaviour<T> : MonoBehaviour where T : IEncoder
+    public abstract class AbstractRecordingBehaviour<TEncoder> : MonoBehaviour where TEncoder : IEncoder
     {
         [SerializeField]
         private AudioSource audioSource;
@@ -120,8 +120,7 @@ namespace Utilities.Audio
             try
             {
                 // Starts the recording process
-                var recording = await RecordingManager.StartRecordingAsync<T>(cancellationToken: destroyCancellationToken);
-                var (path, newClip) = recording;
+                var (path, newClip) = await RecordingManager.StartRecordingAsync<TEncoder>(cancellationToken: destroyCancellationToken);
 
                 if (debug)
                 {

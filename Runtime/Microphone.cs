@@ -73,9 +73,6 @@ namespace Utilities.Audio
         [DllImport("__Internal")]
         private static extern bool Microphone_IsRecording(string deviceName);
 
-        [DllImport("__Internal")]
-        private static extern int Microphone_GetPosition(string deviceName);
-
         #endregion Interop
 
         private static AudioClip currentClip;
