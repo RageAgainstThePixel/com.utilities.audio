@@ -70,6 +70,7 @@ jobs:
             openupm add com.unity.textmeshpro
           }
         shell: pwsh
+        working-directory: ${{ github.workspace }}/Utilities.Audio
       - uses: RageAgainstThePixel/unity-action@v1
         name: '${{ matrix.build-target }}-Validate'
         with:
