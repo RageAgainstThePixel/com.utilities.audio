@@ -65,9 +65,9 @@ jobs:
           $version = [System.Management.Automation.SemanticVersion]$versionString
           $unity6 = [System.Management.Automation.SemanticVersion]'6000.0.0'
           if ($version -ge $unity6) {
-            openupm add com.unity.ugui
+            openupm add com.unity.ugui@2.0.0
           } else {
-            openupm add com.unity.textmeshpro
+            openupm add com.unity.textmeshpro@3.0.9
           }
         shell: pwsh
         working-directory: ${{ github.workspace }}/Utilities.Audio
