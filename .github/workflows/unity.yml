@@ -55,22 +55,6 @@ jobs:
           license: 'Personal'
           username: ${{ secrets.UNITY_USERNAME }}
           password: ${{ secrets.UNITY_PASSWORD }}
-      - run: |
-          npm install -g openupm-cli
-          # check which version of unity we've installed
-          # >= 6000.x then install com.unity.ugui
-          # else install com.unity.textmeshpro
-          $versionString = '${{ matrix.unity-version }}'
-          $versionString = $versionString -replace '.x', ''
-          $version = [System.Management.Automation.SemanticVersion]$versionString
-          $unity6 = [System.Management.Automation.SemanticVersion]'6000.0.0'
-          if ($version -ge $unity6) {
-            openupm add com.unity.ugui --verbose
-          } else {
-            openupm add com.unity.textmeshpro@3.0.9 --verbose
-          }
-        shell: pwsh
-        working-directory: ${{ github.workspace }}/Utilities.Audio
       - uses: RageAgainstThePixel/unity-action@v1
         name: '${{ matrix.build-target }}-Validate'
         with:
