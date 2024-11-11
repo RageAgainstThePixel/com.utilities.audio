@@ -298,7 +298,7 @@ namespace Utilities.Audio
         /// </summary>
         /// <param name="bufferCallback">The buffer callback with new sample data.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async void StartRecordingStream<TEncoder>(Action<ReadOnlyMemory<byte>> bufferCallback, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+        public static async void StartRecordingStream<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken = default) where TEncoder : IEncoder
             => await StartRecordingStreamAsync<TEncoder>(bufferCallback, cancellationToken).ConfigureAwait(true);
 
         /// <summary>
@@ -306,7 +306,7 @@ namespace Utilities.Audio
         /// </summary>
         /// <param name="bufferCallback">The buffer callback with new sample data.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async Task StartRecordingStreamAsync<TEncoder>(Action<ReadOnlyMemory<byte>> bufferCallback, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+        public static async Task StartRecordingStreamAsync<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken = default) where TEncoder : IEncoder
         {
             if (IsBusy)
             {

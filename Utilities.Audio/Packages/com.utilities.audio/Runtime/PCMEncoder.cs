@@ -216,7 +216,7 @@ namespace Utilities.Audio
 
         /// <inheritdoc />
         [Preserve]
-        public async Task StreamRecordingAsync(ClipData clipData, Action<ReadOnlyMemory<byte>> bufferCallback, CancellationToken cancellationToken, string callingMethodName = null)
+        public async Task StreamRecordingAsync(ClipData clipData, Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken, string callingMethodName = null)
         {
             if (callingMethodName != nameof(RecordingManager.StartRecordingStreamAsync))
             {
@@ -291,7 +291,11 @@ namespace Utilities.Audio
                 {
                     try
                     {
-                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, buffer => writer.Write(buffer.Span), cancellationToken);
+                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, async buffer =>
+                        {
+                            writer.Write(buffer.Span);
+                            await Task.Yield();
+                        }, cancellationToken).ConfigureAwait(true);
                     }
                     finally
                     {
@@ -352,7 +356,7 @@ namespace Utilities.Audio
             return result;
         }
 
-        private static async Task<(float[], int)> InternalStreamRecordAsync(ClipData clipData, float[] finalSamples, Action<ReadOnlyMemory<byte>> bufferCallback, CancellationToken cancellationToken)
+        private static async Task<(float[], int)> InternalStreamRecordAsync(ClipData clipData, float[] finalSamples, Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken)
         {
             try
             {
@@ -400,11 +404,21 @@ namespace Utilities.Audio
                             var bufferIndex = (lastMicrophonePosition + i) % clipData.BufferSize; // Wrap around index.
                             var value = sampleBuffer[bufferIndex];
                             var sample = (short)(Math.Max(-1f, Math.Min(1f, value)) * short.MaxValue);
-                            bufferCallback.Invoke(new ReadOnlyMemory<byte>(new[]
+                            var sampleData = new ReadOnlyMemory<byte>(new[]
                             {
                                 (byte)(sample & byte.MaxValue),
                                 (byte)(sample >> 8 & byte.MaxValue)
-                            }));
+                            });
+
+                            try
+                            {
+                                await bufferCallback.Invoke(sampleData).ConfigureAwait(false);
+                            }
+                            catch (Exception e)
+                            {
+                                Debug.LogException(new Exception($"[{nameof(PCMEncoder)}] error occurred when buffering audio", e));
+                            }
+
                             if (finalSamples is { Length: > 0 })
                             {
                                 finalSamples[sampleCount * clipData.Channels + i] = sampleBuffer[bufferIndex];
