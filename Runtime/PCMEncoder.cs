@@ -231,7 +231,16 @@ namespace Utilities.Audio
             }
             catch (Exception e)
             {
-                Debug.LogException(e);
+                switch (e)
+                {
+                    case TaskCanceledException:
+                    case OperationCanceledException:
+                        // ignore
+                        break;
+                    default:
+                        Debug.LogException(e);
+                        break;
+                }
             }
             finally
             {
@@ -283,8 +292,8 @@ namespace Utilities.Audio
                     outStream = new MemoryStream();
                 }
 
-                int totalSampleCount;
-                var finalSamples = new float[clipData.MaxSamples];
+                var totalSampleCount = 0;
+                var finalSamples = new float[clipData.MaxSamples ?? clipData.SampleRate * RecordingManager.MaxRecordingLength];
                 var writer = new BinaryWriter(outStream);
 
                 try
@@ -309,10 +318,16 @@ namespace Utilities.Audio
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[{nameof(RecordingManager)}] Failed to record clip!\n{e}");
-                    RecordingManager.IsRecording = false;
-                    RecordingManager.IsProcessing = false;
-                    return null;
+                    switch (e)
+                    {
+                        case TaskCanceledException:
+                        case OperationCanceledException:
+                            // ignore
+                            break;
+                        default:
+                            Debug.LogException(e);
+                            break;
+                    }
                 }
                 finally
                 {
@@ -339,10 +354,6 @@ namespace Utilities.Audio
                 newClip.SetData(microphoneData, 0);
                 result = new Tuple<string, AudioClip>(outputPath, newClip);
                 callback?.Invoke(result);
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
             }
             finally
             {
@@ -397,6 +408,7 @@ namespace Utilities.Audio
 
                     if (samplesToWrite > 0)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         clipData.Clip.GetData(sampleBuffer, 0);
 
                         for (var i = 0; i < samplesToWrite; i++)
@@ -434,7 +446,7 @@ namespace Utilities.Audio
                         }
                     }
 
-                    if (sampleCount >= clipData.MaxSamples || cancellationToken.IsCancellationRequested)
+                    if (clipData.MaxSamples.HasValue && sampleCount >= clipData.MaxSamples || cancellationToken.IsCancellationRequested)
                     {
                         if (RecordingManager.EnableDebug)
                         {

@@ -14,7 +14,6 @@ namespace Utilities.Audio
             Channels = clip.channels;
             BufferSize = clip.samples;
             SampleRate = clip.frequency;
-            MaxSamples = RecordingManager.MaxRecordingLength * SampleRate;
         }
 
         public AudioClip Clip { get; }
@@ -29,6 +28,6 @@ namespace Utilities.Audio
 
         public int SampleRate { get; }
 
-        public int MaxSamples { get; }
+        public int? MaxSamples { get; internal set; }
     }
 }

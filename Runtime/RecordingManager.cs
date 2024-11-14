@@ -265,7 +265,9 @@ namespace Utilities.Audio
                     encoderCache.TryAdd(typeof(TEncoder), encoder);
                 }
 
-                return await encoder.StreamSaveToDiskAsync(InitializeRecording(clip), saveDirectory, OnClipRecorded, cancellationTokenSource.Token);
+                var clipData = InitializeRecording(clip);
+                clipData.MaxSamples = MaxRecordingLength * clip.frequency;
+                return await encoder.StreamSaveToDiskAsync(clipData, saveDirectory, OnClipRecorded, cancellationTokenSource.Token);
             }
             catch (Exception e)
             {
