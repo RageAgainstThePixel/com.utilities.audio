@@ -247,6 +247,11 @@ namespace Utilities.Audio
                 var rightIndex = leftIndex + 1;
                 var fraction = resampleIndex - leftIndex;
 
+                if (leftIndex >= samples.Length)
+                {
+                    leftIndex = samples.Length - 1;
+                }
+
                 if (rightIndex >= samples.Length)
                 {
                     buffer[i] = samples[leftIndex];
@@ -445,7 +450,6 @@ namespace Utilities.Audio
                 do
                 {
                     await Awaiters.UnityMainThread; // ensure we're on main thread to call unity apis
-                    cancellationToken.ThrowIfCancellationRequested();
                     var microphonePosition = sampleProvider.GetPosition(clipData.Device);
 
                     if (microphonePosition <= 0 && lastMicrophonePosition == 0)
@@ -473,9 +477,8 @@ namespace Utilities.Audio
                         samplesToWrite = microphonePosition - lastMicrophonePosition;
                     }
 
-                    if (samplesToWrite > 0)
+                    if (samplesToWrite > 0 && !cancellationToken.IsCancellationRequested)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
                         sampleProvider.GetData(clipData.Clip, sampleBuffer);
 
                         var outputSamplesToWrite = needsResample
@@ -505,7 +508,6 @@ namespace Utilities.Audio
                             try
                             {
                                 await bufferCallback.Invoke(ToReadOnlyMemory(NormalizeSample(value))).ConfigureAwait(false);
-                                cancellationToken.ThrowIfCancellationRequested();
                             }
                             catch (Exception e)
                             {
@@ -519,7 +521,11 @@ namespace Utilities.Audio
                         }
 
                         lastMicrophonePosition = microphonePosition;
-                        sampleCount += outputSamplesToWrite;
+
+                        if (finalSamples is { Length: > 0 })
+                        {
+                            sampleCount += outputSamplesToWrite;
+                        }
 
                         if (RecordingManager.EnableDebug)
                         {
@@ -542,6 +548,7 @@ namespace Utilities.Audio
             finally
             {
                 RecordingManager.IsRecording = false;
+                await Awaiters.UnityMainThread; // ensure we're on main thread to call unity apis
                 sampleProvider.End(clipData.Device);
 
                 if (RecordingManager.EnableDebug)

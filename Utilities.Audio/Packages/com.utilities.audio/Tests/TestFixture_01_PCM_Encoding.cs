@@ -123,7 +123,7 @@ namespace Utilities.Audio.Tests
         }
 
         [Test]
-        public void Test_00_07_Resample_LargerSampleArray_ResamplesCorrectly()
+        public void Test_00_07_01_Resample_LargerSampleArray_ResamplesCorrectly()
         {
             var samples = new float[k_44100];
             for (var i = 0; i < samples.Length; i++)
@@ -134,6 +134,25 @@ namespace Utilities.Audio.Tests
             var result = PCMEncoder.Resample(samples, null, k_44100, k_24000);
 
             Assert.AreEqual(24000, result.Length);
+            Assert.AreEqual(0f, result[0], Tolerance);
+            Assert.AreEqual(0.25f, result[6000], Tolerance);
+            Assert.AreEqual(0.5f, result[12000], Tolerance);
+            Assert.AreEqual(0.75f, result[18000], Tolerance);
+            Assert.AreEqual(1f, result[23999], Tolerance);
+        }
+
+        [Test]
+        public void Test_00_07_02_Resample_SmallerSampleArray_ResamplesCorrectly()
+        {
+            var samples = new float[k_16000];
+            for (var i = 0; i < samples.Length; i++)
+            {
+                samples[i] = (float)i / samples.Length;
+            }
+
+            var result = PCMEncoder.Resample(samples, null, k_16000, k_24000);
+
+            Assert.AreEqual(k_24000, result.Length);
             Assert.AreEqual(0f, result[0], Tolerance);
             Assert.AreEqual(0.25f, result[6000], Tolerance);
             Assert.AreEqual(0.5f, result[12000], Tolerance);
@@ -421,14 +440,14 @@ namespace Utilities.Audio.Tests
             const int frequency = 440;
 
             // Generate a sine wave sample at the input sample rate
-            var originalSamples = TestUtilities.GenerateSineWaveSamples(frequency, k_44100, durationInSeconds);
-            var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_44100, k_24000);
+            var originalSamples = TestUtilities.GenerateSineWaveSamples(frequency, k_16000, durationInSeconds);
+            var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_16000, k_24000);
 
             // create dummy mic clip that is 1 second long
-            var micClip = AudioClip.Create("TestClip", k_44100, 1, k_44100, false);
+            var micClip = AudioClip.Create("TestClip", k_16000, 1, k_16000, false);
 
             // Create a ClipData object with the generated samples
-            var clipData = new ClipData(micClip, "TestDevice", k_24000);
+            var clipData = new ClipData(micClip, "TestDevice", k_44100);
 
             // Buffer callback to collect the resampled data
             var resampledData = new List<byte>();
@@ -439,7 +458,7 @@ namespace Utilities.Audio.Tests
                 await Task.Yield();
             }
 
-            var mockSampleProvider = new MockSampleProvider(originalSamples, k_44100);
+            var mockSampleProvider = new MockSampleProvider(originalSamples, k_16000);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(11));
 
             // Simulate the recording process
@@ -452,7 +471,7 @@ namespace Utilities.Audio.Tests
             Assert.AreEqual(resampledSamples.Length, sampleCount, "Resampled sample count should match the expected count.");
 
             // Verify the resampled data
-            var expectedResampledSamples = PCMEncoder.Resample(originalSamples, null, k_44100, k_24000);
+            var expectedResampledSamples = PCMEncoder.Resample(originalSamples, null, k_16000, k_24000);
             const float quantizationTolerance = 1.0f / short.MaxValue; // Tolerance for 16-bit quantization
 
             // Decode the resampled data
