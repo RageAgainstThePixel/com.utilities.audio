@@ -1,19 +1,21 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using System;
 using UnityEngine;
 
 namespace Utilities.Audio
 {
     public class ClipData
     {
-        public ClipData(AudioClip clip, string recordingDevice)
+        public ClipData(AudioClip clip, string recordingDevice, int outputSampleRate)
         {
             Clip = clip;
             Name = clip.name;
             Device = recordingDevice;
             Channels = clip.channels;
-            BufferSize = clip.samples;
-            SampleRate = clip.frequency;
+            InputBufferSize = clip.samples;
+            InputSampleRate = clip.frequency;
+            OutputSampleRate = outputSampleRate;
         }
 
         public AudioClip Clip { get; }
@@ -24,9 +26,19 @@ namespace Utilities.Audio
 
         public int Channels { get; }
 
-        public int BufferSize { get; }
+        [Obsolete("use InputBufferSize")]
+        public int BufferSize => InputBufferSize;
 
-        public int SampleRate { get; }
+        [Obsolete("use InputSampleRate")]
+        public int SampleRate => InputSampleRate;
+
+        public int InputSampleRate { get; }
+
+        public int InputBufferSize { get; }
+
+        public int OutputSampleRate { get; }
+
+        public int OutputBufferSize { get; internal set; }
 
         public int? MaxSamples { get; internal set; }
     }

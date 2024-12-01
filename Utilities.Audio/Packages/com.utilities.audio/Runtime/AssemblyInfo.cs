@@ -4,3 +4,4 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Utilities.Encoding.OggVorbis")]
 [assembly: InternalsVisibleTo("Utilities.Encoding.Wav")]
+[assembly: InternalsVisibleTo("Utilities.Audio.Tests")]

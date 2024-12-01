@@ -1,0 +1,14 @@
+{
+    "name": "Utilities.Encoder.PCM.Samples.Recording.Streaming",
+    "rootNamespace": "Utilities.Encoder.PCM.Samples.Recording.Streaming",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
