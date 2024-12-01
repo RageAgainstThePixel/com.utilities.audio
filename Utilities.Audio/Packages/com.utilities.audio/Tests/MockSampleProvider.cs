@@ -8,33 +8,40 @@ namespace Utilities.Audio.Tests
 {
     internal class MockSampleProvider : ISampleProvider
     {
-        private readonly float[] inputBuffer;
-        private readonly float[] fullSamples;
         private int micPosition;
+        private int maxSamples;
+        private int totalSamples;
         private int sampleRate;
-        private int totalTime;
+        private float[] recordedSamples;
 
-        public MockSampleProvider(float[] fullSamples, int sampleRate)
+        public MockSampleProvider(float[] recordedSamples, int sampleRate, int time)
         {
-            // buffer will always be one second long.
-            this.inputBuffer = new float[sampleRate];
-            this.sampleRate = sampleRate;
-            this.fullSamples = fullSamples;
             micPosition = 0;
-            totalTime = 0;
+            this.sampleRate = sampleRate;
+            maxSamples = time * sampleRate;
+            this.recordedSamples = recordedSamples;
         }
 
         public int GetPosition(string deviceName)
         {
-            // unity will move this ahead depending on frame rate.
-            // for now just move it ahead one second.
-            micPosition += sampleRate;
-            totalTime += micPosition;
-
-            // loop back to the beginning if we've reached the end
-            if (micPosition >= fullSamples.Length)
+            if (totalSamples >= maxSamples)
             {
-                micPosition = 0;
+                Debug.LogError($"max samples hit {totalSamples} >= {maxSamples}");
+                return micPosition;
+            }
+
+            micPosition += sampleRate / 10;
+
+            if (micPosition >= sampleRate)
+            {
+                micPosition -= sampleRate;
+                totalSamples += micPosition;
+                Debug.LogWarning($"loopback {micPosition} | {totalSamples}");
+            }
+            else
+            {
+                totalSamples += micPosition;
+                Debug.Log($"pos: {micPosition} | {totalSamples}");
             }
 
             return micPosition;
@@ -42,22 +49,14 @@ namespace Utilities.Audio.Tests
 
         public void GetData(AudioClip clip, float[] buffer)
         {
-            // Calculate the number of samples to copy
-            var samplesToCopy = Math.Min(buffer.Length, fullSamples.Length);
-
-            // Copy the samples from the fullSamples array to the buffer
-            Array.Copy(fullSamples, 0, buffer, 0, samplesToCopy);
-
-            // If the buffer is larger than the remaining samples, wrap around and copy from the beginning
-            if (samplesToCopy < buffer.Length)
-            {
-                Array.Copy(fullSamples, 0, buffer, samplesToCopy, buffer.Length - samplesToCopy);
-            }
+            Assert.AreEqual(buffer.Length, sampleRate);
+            Assert.GreaterOrEqual(micPosition, 0, "micPosition must be non-negative.");
+            Array.Copy(recordedSamples, micPosition, buffer, 0, buffer.Length);
         }
 
         public void End(string deviceName)
         {
-            // No-op for mock
+            micPosition = -1;
         }
     }
 }

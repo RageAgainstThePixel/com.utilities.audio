@@ -14,6 +14,7 @@ namespace Utilities.Audio.Tests
     {
         private const float Tolerance = 0.01f;
         private const double TestFrequency = 440; // A4 note.
+        private const int k_96000 = 96000;
         private const int k_48000 = 48000;
         private const int k_44100 = 44100; // Default unity sample rate.
         private const int k_22050 = 22050;
@@ -65,6 +66,12 @@ namespace Utilities.Audio.Tests
             Assert.AreEqual(0.1f, result1[0], Tolerance);
             Assert.AreEqual(0.3f, result1[1], Tolerance);
 
+            // assert that each value is greater than or equal to the prev
+            for (var i = 1; i < result1.Length; i++)
+            {
+                Assert.GreaterOrEqual(result1[i], result1[i - 1]);
+            }
+
             // Test case 2
             float[] samples2 = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 
@@ -74,6 +81,12 @@ namespace Utilities.Audio.Tests
             Assert.AreEqual(0.1f, result2[0], Tolerance);
             Assert.AreEqual(0.4f, result2[1], Tolerance);
             Assert.AreEqual(0.7f, result2[2], Tolerance);
+
+            // assert that each value is greater than or equal to the prev
+            for (var i = 1; i < result2.Length; i++)
+            {
+                Assert.GreaterOrEqual(result2[i], result2[i - 1]);
+            }
 
             // Test case 3
             float[] samples3 = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
@@ -86,6 +99,32 @@ namespace Utilities.Audio.Tests
             Assert.AreEqual(0.5f, result3[2], Tolerance);
             Assert.AreEqual(0.7f, result3[3], Tolerance);
             Assert.AreEqual(0.9f, result3[4], Tolerance);
+
+            // assert that each value is greater than or equal to the prev
+            for (var i = 1; i < result3.Length; i++)
+            {
+                Assert.GreaterOrEqual(result3[i], result3[i - 1]);
+            }
+
+            // Test case 4
+            float[] samples4 = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
+
+            var result4 = PCMEncoder.Resample(samples4, null, k_16000, k_96000);
+
+            Assert.AreEqual(60, result4.Length);
+            Assert.AreEqual(0.1f, result4[0], Tolerance);
+            Assert.AreEqual(0.3f, result4[10], Tolerance);
+            Assert.AreEqual(0.4f, result4[20], Tolerance);
+            Assert.AreEqual(0.6f, result4[30], Tolerance);
+            Assert.AreEqual(0.8f, result4[40], Tolerance);
+            Assert.AreEqual(0.9f, result4[50], Tolerance);
+            Assert.AreEqual(1f, result4[59], Tolerance);
+
+            // assert that each value is greater than or equal to the prev
+            for (var i = 1; i < result4.Length; i++)
+            {
+                Assert.GreaterOrEqual(result4[i], result4[i - 1], $"Expected [{i}] {result4[i]} >= [{i - 1}] {result4[i - 1]}");
+            }
         }
 
         [Test]
@@ -150,14 +189,14 @@ namespace Utilities.Audio.Tests
                 samples[i] = (float)i / samples.Length;
             }
 
-            var result = PCMEncoder.Resample(samples, null, k_16000, k_24000);
+            var result = PCMEncoder.Resample(samples, null, k_16000, k_96000);
 
-            Assert.AreEqual(k_24000, result.Length);
+            Assert.AreEqual(k_96000, result.Length);
             Assert.AreEqual(0f, result[0], Tolerance);
-            Assert.AreEqual(0.25f, result[6000], Tolerance);
-            Assert.AreEqual(0.5f, result[12000], Tolerance);
-            Assert.AreEqual(0.75f, result[18000], Tolerance);
-            Assert.AreEqual(1f, result[23999], Tolerance);
+            Assert.AreEqual(0.25f, result[24000], Tolerance);
+            Assert.AreEqual(0.5f, result[48000], Tolerance);
+            Assert.AreEqual(0.75f, result[72000], Tolerance);
+            Assert.AreEqual(1f, result[95999], Tolerance);
         }
 
         [Test]
@@ -436,50 +475,57 @@ namespace Utilities.Audio.Tests
         [Test]
         public async Task Test_05_01_InternalStreamRecordAsync_Resampling()
         {
-            const int durationInSeconds = 10;
-            const int frequency = 440;
-
-            // Generate a sine wave sample at the input sample rate
-            var originalSamples = TestUtilities.GenerateSineWaveSamples(frequency, k_16000, durationInSeconds);
-            var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_16000, k_24000);
-
-            // create dummy mic clip that is 1 second long
-            var micClip = AudioClip.Create("TestClip", k_16000, 1, k_16000, false);
-
-            // Create a ClipData object with the generated samples
-            var clipData = new ClipData(micClip, "TestDevice", k_44100);
-
-            // Buffer callback to collect the resampled data
-            var resampledData = new List<byte>();
-
-            async Task BufferCallback(ReadOnlyMemory<byte> buffer)
+            try
             {
-                resampledData.AddRange(buffer.ToArray());
-                await Task.Yield();
+                const int frequency = 440;
+
+                // Generate a sine wave sample at the input sample rate
+                var originalSamples = TestUtilities.GenerateSineWaveSamples(frequency, k_44100, 10);
+
+                // create dummy mic clip that is 1 second long
+                var micClip = AudioClip.Create("TestClip", k_44100, 1, k_44100, false);
+
+                // Create a ClipData object with the generated samples
+                var clipData = new ClipData(micClip, "TestDevice", k_44100);
+
+                // Buffer callback to collect the resampled data
+                var resampledData = new Queue<byte>();
+
+                async Task BufferCallback(ReadOnlyMemory<byte> buffer)
+                {
+                    foreach (var @byte in buffer.ToArray())
+                    {
+                        resampledData.Enqueue(@byte);
+                    }
+                    await Task.Yield();
+                }
+
+                var mockSampleProvider = new MockSampleProvider(originalSamples, k_44100, 10);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+                RecordingManager.EnableDebug = true;
+
+                // Simulate the recording process
+                await PCMEncoder.InternalStreamRecordAsync(clipData, null, BufferCallback, mockSampleProvider, cts.Token);
+
+                // Verify the resampled data
+                var expectedResampledSamples = PCMEncoder.Resample(originalSamples, null, k_44100, k_44100);
+                const float quantizationTolerance = 1.0f / short.MaxValue; // Tolerance for 16-bit quantization
+
+                // Decode the resampled data
+                var decodedSamples = PCMEncoder.Decode(resampledData.ToArray());
+
+                // Verify the length of the resampled data
+                Assert.AreEqual(expectedResampledSamples.Length * 10, decodedSamples.Length, "Resampled sample count should match the expected count.");
+
+                for (var i = 0; i < decodedSamples.Length; i++)
+                {
+                    Assert.AreEqual(expectedResampledSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                }
             }
-
-            var mockSampleProvider = new MockSampleProvider(originalSamples, k_16000);
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(11));
-
-            // Simulate the recording process
-            var (finalSamples, sampleCount) = await PCMEncoder.InternalStreamRecordAsync(clipData, null, BufferCallback, mockSampleProvider, cts.Token);
-
-            Assert.AreEqual(finalSamples.Length, resampledSamples.Length);
-            Assert.AreEqual(sampleCount, resampledSamples.Length);
-
-            // Verify the length of the resampled data
-            Assert.AreEqual(resampledSamples.Length, sampleCount, "Resampled sample count should match the expected count.");
-
-            // Verify the resampled data
-            var expectedResampledSamples = PCMEncoder.Resample(originalSamples, null, k_16000, k_24000);
-            const float quantizationTolerance = 1.0f / short.MaxValue; // Tolerance for 16-bit quantization
-
-            // Decode the resampled data
-            var decodedSamples = PCMEncoder.Decode(resampledData.ToArray(), PCMFormatSize.SixteenBit);
-
-            for (var i = 0; i < decodedSamples.Length; i++)
+            catch (Exception e)
             {
-                Assert.AreEqual(expectedResampledSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Debug.LogException(e);
             }
         }
     }

@@ -13,6 +13,8 @@ namespace Utilities.Audio
 {
     public class PCMEncoder : IEncoder
     {
+        private const int HammingWindowFilterLength = 32;
+
         internal static readonly ISampleProvider DefaultSampleProvider = new UnitySampleProvider();
 
         /// <summary>
@@ -246,20 +248,9 @@ namespace Utilities.Audio
                 var leftIndex = (int)Math.Floor(resampleIndex);
                 var rightIndex = leftIndex + 1;
                 var fraction = resampleIndex - leftIndex;
-
-                if (leftIndex >= samples.Length)
-                {
-                    leftIndex = samples.Length - 1;
-                }
-
-                if (rightIndex >= samples.Length)
-                {
-                    buffer[i] = samples[leftIndex];
-                }
-                else
-                {
-                    buffer[i] = (float)(samples[leftIndex] * (1 - fraction) + samples[rightIndex] * fraction);
-                }
+                var leftSample = (leftIndex >= samples.Length ? samples[^1] : samples[leftIndex]) * (1 - fraction);
+                var rightSample = (rightIndex >= samples.Length ? samples[^1] : samples[rightIndex]) * fraction;
+                buffer[i] = (float)(leftSample + rightSample);
             }
 
             return buffer;
@@ -443,7 +434,7 @@ namespace Utilities.Audio
                 var shouldStop = false;
                 var lastMicrophonePosition = 0;
                 var needsResample = clipData.InputSampleRate != clipData.OutputSampleRate;
-                var ratio = needsResample ? (double)clipData.InputSampleRate / clipData.OutputSampleRate : 1d;
+                var ratio = needsResample ? clipData.OutputSampleRate / (double)clipData.InputSampleRate : 1d;
                 var inputBufferSize = clipData.InputBufferSize;
                 var sampleBuffer = new float[inputBufferSize];
 
@@ -454,6 +445,11 @@ namespace Utilities.Audio
 
                     if (microphonePosition <= 0 && lastMicrophonePosition == 0)
                     {
+                        if (RecordingManager.EnableDebug)
+                        {
+                            Debug.LogWarning($"[{nameof(RecordingManager)}] Microphone position is 0, skipping...");
+                        }
+
                         // Skip this iteration if there aren't any samples
                         continue;
                     }
@@ -493,11 +489,13 @@ namespace Utilities.Audio
                             {
                                 var resampleIndex = Math.Round(lastMicrophonePosition + i / ratio, MidpointRounding.ToEven);
                                 var leftIndex = (int)Math.Floor(resampleIndex) % inputBufferSize; // Wrap around index.
-                                var rightIndex = (leftIndex + 1) % inputBufferSize; // Wrap around index.
-                                var fraction = resampleIndex - leftIndex;
 
                                 // Simple Linear Interpolation
-                                value = (float)((1 - fraction) * sampleBuffer[leftIndex] + fraction * sampleBuffer[rightIndex]);
+                                var rightIndex = (leftIndex + 1) % inputBufferSize; // Wrap around index.
+                                var fraction = resampleIndex - leftIndex;
+                                var leftSample = sampleBuffer[leftIndex] * fraction;
+                                var rightSample = sampleBuffer[rightIndex] * (1 - fraction);
+                                value = (float)(leftSample + rightSample);
                             }
                             else
                             {
@@ -521,11 +519,7 @@ namespace Utilities.Audio
                         }
 
                         lastMicrophonePosition = microphonePosition;
-
-                        if (finalSamples is { Length: > 0 })
-                        {
-                            sampleCount += outputSamplesToWrite;
-                        }
+                        sampleCount += outputSamplesToWrite;
 
                         if (RecordingManager.EnableDebug)
                         {
@@ -533,7 +527,7 @@ namespace Utilities.Audio
                         }
                     }
 
-                    if (sampleCount >= maxSampleLength || cancellationToken.IsCancellationRequested)
+                    if (cancellationToken.IsCancellationRequested || sampleCount >= maxSampleLength)
                     {
                         if (RecordingManager.EnableDebug)
                         {
@@ -557,6 +551,14 @@ namespace Utilities.Audio
                 }
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static double SinC(double x)
+            => x == 0d ? 1d : Math.Sin(Math.PI * x) / (Math.PI * x);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static double HammingWindow(int n, int filterLength)
+            => 0.54d - 0.46d * Math.Cos(2 * Math.PI * n / (filterLength - 1));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static short NormalizeSample(float value)

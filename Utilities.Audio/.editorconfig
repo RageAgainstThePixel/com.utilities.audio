@@ -34,6 +34,15 @@ dotnet_style_predefined_type_for_locals_parameters_members = true
 # Code Style
 csharp_style_var_when_type_is_apparent = true
 
+## Diagnostics
+
+# don't warn about unused unity event functions
+dotnet_diagnostic.IDE0051.severity = none
+# don't warn about making field readonly
+dotnet_diagnostic.IDE0044.severity = none
+# don't warn about unassigned private field
+dotnet_diagnostic.CS0649.severity = none
+
 #### Resharper/Rider Rules ####
 # https://www.jetbrains.com/help/resharper/EditorConfig_Properties.html
 
