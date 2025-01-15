@@ -234,11 +234,11 @@ namespace Utilities.Audio
 
             if (EnableDebug && inputSampleRate != outputSampleRate)
             {
-                Debug.LogWarning($"[{nameof(RecordingManager)}] device frequency range is outside of the requested output sample range. Clip will be resampled.");
+                Debug.LogWarning($"[{nameof(RecordingManager)}] device frequency range is outside of the requested output sample range. Clip will be resampled: {inputSampleRate}->{outputSampleRate}");
             }
 
             // create dummy clip for recording purposes with a 1-second buffer.
-            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, 44100);
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, inputSampleRate);
 
             if (clip == null)
             {
@@ -291,8 +291,10 @@ namespace Utilities.Audio
                     isRecording = false;
                     isProcessing = false;
                 }
-#if UNITY_EDITOR
+
                 await Awaiters.UnityMainThread;
+
+#if UNITY_EDITOR
 
                 if (EnableDebug)
                 {
@@ -373,11 +375,11 @@ namespace Utilities.Audio
 
             if (EnableDebug && inputSampleRate != outputSampleRate)
             {
-                Debug.LogWarning($"[{nameof(RecordingManager)}] device frequency range is outside of the requested output sample range. Clip will be resampled.");
+                Debug.LogWarning($"[{nameof(RecordingManager)}] device frequency range is outside of the requested output sample range. Clip will be resampled: {inputSampleRate}->{outputSampleRate}");
             }
 
             // create dummy clip for recording purposes with a 1-second buffer.
-            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, 44100);
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, inputSampleRate);
 
             if (clip == null)
             {
@@ -397,15 +399,6 @@ namespace Utilities.Audio
             {
                 cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             }
-
-#if UNITY_EDITOR
-            if (EnableDebug)
-            {
-                Debug.Log($"[{nameof(RecordingManager)}] <>Disable auto refresh<>");
-            }
-
-            UnityEditor.AssetDatabase.DisallowAutoRefresh();
-#endif
 
             try
             {
@@ -428,16 +421,8 @@ namespace Utilities.Audio
                     isRecording = false;
                     isProcessing = false;
                 }
-#if UNITY_EDITOR
+
                 await Awaiters.UnityMainThread;
-
-                if (EnableDebug)
-                {
-                    Debug.Log($"[{nameof(RecordingManager)}] <>Enable auto refresh<>");
-                }
-
-                UnityEditor.AssetDatabase.AllowAutoRefresh();
-#endif
             }
         }
 

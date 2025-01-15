@@ -38,8 +38,6 @@ namespace Utilities.Audio
 
         public int OutputSampleRate { get; }
 
-        public int OutputBufferSize { get; internal set; }
-
         public int? MaxSamples { get; internal set; }
     }
 }

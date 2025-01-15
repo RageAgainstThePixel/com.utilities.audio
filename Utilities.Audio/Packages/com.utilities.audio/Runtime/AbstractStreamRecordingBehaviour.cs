@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -72,6 +73,13 @@ namespace Utilities.Audio
                         data[i + j] = sample;
                     }
                 }
+                else
+                {
+                    for (var j = 0; j < channels; j++)
+                    {
+                        data[i + j] = 0f; // Fill silence if queue is empty
+                    }
+                }
             }
         }
 
@@ -95,18 +103,32 @@ namespace Utilities.Audio
                 {
                     if (!RecordingManager.IsBusy)
                     {
+                        var recordingSampleRate = (int)sampleRate;
+                        var playbackSampleRate = AudioSettings.outputSampleRate;
+
+                        if (debug)
+                        {
+                            UnityEngine.Debug.Log($"recording sample rate: {recordingSampleRate}");
+                            UnityEngine.Debug.Log($"playback sample rate: {playbackSampleRate}");
+                        }
+
+                        // write to a file
+                        var fileStream = new FileStream($"{Application.dataPath}/{DateTime.UtcNow:yy-MM-dd-ss}-recording.raw", FileMode.Create, FileAccess.Write, FileShare.Read);
+
                         // ReSharper disable once MethodHasAsyncOverload
-                        RecordingManager.StartRecordingStream<PCMEncoder>(BufferCallback, (int)sampleRate, destroyCancellationToken);
+                        RecordingManager.StartRecordingStream<PCMEncoder>(BufferCallback, recordingSampleRate, destroyCancellationToken);
 
                         async Task BufferCallback(ReadOnlyMemory<byte> bufferCallback)
                         {
+                            await fileStream.WriteAsync(bufferCallback, destroyCancellationToken);
+
                             var bytes = bufferCallback.ToArray();
-                            var samples = PCMEncoder.Decode(bytes, inputSampleRate: (int)sampleRate, outputSampleRate: 44100);
+                            var samples = PCMEncoder.Decode(bytes, inputSampleRate: recordingSampleRate, outputSampleRate: playbackSampleRate);
+
                             foreach (var sample in samples)
                             {
                                 sampleQueue.Enqueue(sample);
                             }
-                            await Task.Yield();
                         }
                     }
                 }
@@ -117,7 +139,6 @@ namespace Utilities.Audio
         private void OnDestroy()
         {
             lifetimeCancellationTokenSource.Cancel();
-            lifetimeCancellationTokenSource.Dispose();
         }
 #endif
     }

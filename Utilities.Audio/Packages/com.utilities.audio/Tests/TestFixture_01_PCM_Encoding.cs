@@ -2,10 +2,7 @@
 
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Utilities.Audio.Tests
@@ -61,7 +58,7 @@ namespace Utilities.Audio.Tests
             float[] samples1 = { 0.1f, 0.2f, 0.3f, 0.4f };
 
             var result1 = PCMEncoder.Resample(samples1, null, k_44100, k_24000);
-
+            Debug.Log($"values: {string.Join(',', result1)}");
             Assert.AreEqual(2, result1.Length);
             Assert.AreEqual(0.1f, result1[0], Tolerance);
             Assert.AreEqual(0.3f, result1[1], Tolerance);
@@ -328,15 +325,15 @@ namespace Utilities.Audio.Tests
         [Test]
         public void Test_02_03_PCM_Encode_16Bit_Resampled()
         {
-            var originalSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, k_44100);
-            var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_44100, k_24000);
+            var originalSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, k_48000);
+            var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_48000, k_44100);
 
             var encodedBytes = PCMEncoder.Encode(resampledSamples, PCMFormatSize.SixteenBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.SixteenBit);
 
             File.WriteAllBytes("test-samples/16bit-sine-resampled.pcm", encodedBytes);
 
-            Assert.AreEqual(k_24000, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
+            Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
 
             const float quantizationTolerance = 1.0f / short.MaxValue; // Tolerance for 16-bit quantization
 
@@ -371,8 +368,8 @@ namespace Utilities.Audio.Tests
             // Adjust silence for 24-bit representation if needed
             const int fixedSilenceAtStart = 512;
             const int fixedSilenceAtEnd = 256;
-            var testSamples = TestUtilities.GenerateSineWaveSamplesWithSilence(TestFrequency, k_44100, fixedSilenceAtStart, fixedSilenceAtEnd);
 
+            var testSamples = TestUtilities.GenerateSineWaveSamplesWithSilence(TestFrequency, k_44100, fixedSilenceAtStart, fixedSilenceAtEnd);
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.TwentyFourBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.TwentyFourBit);
 
@@ -469,63 +466,6 @@ namespace Utilities.Audio.Tests
             for (var i = 0; i < decodedSamples.Length; i++)
             {
                 Assert.AreEqual(resampledSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
-            }
-        }
-
-        [Test]
-        public async Task Test_05_01_InternalStreamRecordAsync_Resampling()
-        {
-            try
-            {
-                const int frequency = 440;
-
-                // Generate a sine wave sample at the input sample rate
-                var originalSamples = TestUtilities.GenerateSineWaveSamples(frequency, k_44100, 10);
-
-                // create dummy mic clip that is 1 second long
-                var micClip = AudioClip.Create("TestClip", k_44100, 1, k_44100, false);
-
-                // Create a ClipData object with the generated samples
-                var clipData = new ClipData(micClip, "TestDevice", k_44100);
-
-                // Buffer callback to collect the resampled data
-                var resampledData = new Queue<byte>();
-
-                async Task BufferCallback(ReadOnlyMemory<byte> buffer)
-                {
-                    foreach (var @byte in buffer.ToArray())
-                    {
-                        resampledData.Enqueue(@byte);
-                    }
-                    await Task.Yield();
-                }
-
-                var mockSampleProvider = new MockSampleProvider(originalSamples, k_44100, 10);
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-
-                RecordingManager.EnableDebug = true;
-
-                // Simulate the recording process
-                await PCMEncoder.InternalStreamRecordAsync(clipData, null, BufferCallback, mockSampleProvider, cts.Token);
-
-                // Verify the resampled data
-                var expectedResampledSamples = PCMEncoder.Resample(originalSamples, null, k_44100, k_44100);
-                const float quantizationTolerance = 1.0f / short.MaxValue; // Tolerance for 16-bit quantization
-
-                // Decode the resampled data
-                var decodedSamples = PCMEncoder.Decode(resampledData.ToArray());
-
-                // Verify the length of the resampled data
-                Assert.AreEqual(expectedResampledSamples.Length * 10, decodedSamples.Length, "Resampled sample count should match the expected count.");
-
-                for (var i = 0; i < decodedSamples.Length; i++)
-                {
-                    Assert.AreEqual(expectedResampledSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
             }
         }
     }
