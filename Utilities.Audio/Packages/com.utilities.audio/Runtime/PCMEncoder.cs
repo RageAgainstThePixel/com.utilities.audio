@@ -72,11 +72,28 @@ namespace Utilities.Audio
                 }
             }
 
+            return Encode(samples, null, start, length, size);
+        }
+
+        [Preserve]
+        internal static byte[] Encode(float[] samples, byte[] buffer = null, int? start = null, int? sampleLength = null, PCMFormatSize size = PCMFormatSize.SixteenBit)
+        {
+            start ??= 0;
+            sampleLength ??= samples.Length;
             var offset = (int)size;
-            var pcmData = new byte[length * offset];
+            var bufferLength = (int)sampleLength * offset;
+
+            // only update buffer if null or less than.
+            // If greater than we will just set the rest of the buffer to silence before returning buffer.
+            if (buffer == null || buffer.Length < bufferLength)
+            {
+                buffer = new byte[bufferLength];
+            }
+
+            bufferLength = buffer.Length;
 
             // Ensuring samples are within [-1,1] range
-            for (var i = 0; i < sampleCount; i++)
+            for (var i = 0; i < sampleLength; i++)
             {
                 samples[i] = NormalizeSample(samples[i]);
             }
@@ -85,52 +102,62 @@ namespace Utilities.Audio
             switch (size)
             {
                 case PCMFormatSize.EightBit:
-                    for (var i = start; i < end; i++)
+                    for (var i = (int)start; i < sampleLength; i++)
                     {
                         var value = samples[i];
                         var sample = (int)Math.Max(Math.Min(Math.Round(value * 127 + 128), 255), 0);
-                        pcmData[i - start] = (byte)sample;
+                        var stride = (int)(i - start);
+                        buffer[stride] = (byte)sample;
                     }
                     break;
                 case PCMFormatSize.SixteenBit:
-                    for (var i = start; i < end; i++)
+                    for (var i = (int)start; i < sampleLength; i++)
                     {
                         var value = samples[i];
                         var sample = (short)(value * short.MaxValue);
-                        var stride = (i - start) * offset;
-                        pcmData[stride] = (byte)(sample & byte.MaxValue);
-                        pcmData[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
+                        var stride = (int)(i - start) * offset;
+                        buffer[stride] = (byte)(sample & byte.MaxValue);
+                        buffer[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
                     }
                     break;
                 case PCMFormatSize.TwentyFourBit:
-                    for (var i = start; i < end; i++)
+                    for (var i = (int)start; i < sampleLength; i++)
                     {
                         var value = samples[i];
                         var sample = (int)(value * ((1 << 23) - 1));
                         sample = Math.Min(Math.Max(sample, -(1 << 23)), (1 << 23) - 1);
-                        var stride = (i - start) * offset;
-                        pcmData[stride] = (byte)(sample & byte.MaxValue);
-                        pcmData[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
-                        pcmData[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
+                        var stride = (int)(i - start) * offset;
+                        buffer[stride] = (byte)(sample & byte.MaxValue);
+                        buffer[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
+                        buffer[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
                     }
                     break;
                 case PCMFormatSize.ThirtyTwoBit:
-                    for (var i = start; i < end; i++)
+                    for (var i = (int)start; i < sampleLength; i++)
                     {
                         var value = samples[i];
                         var sample = (int)(value * int.MaxValue);
-                        var stride = (i - start) * offset;
-                        pcmData[stride] = (byte)(sample & byte.MaxValue);
-                        pcmData[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
-                        pcmData[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
-                        pcmData[stride + 3] = (byte)((sample >> 24) & byte.MaxValue);
+                        var stride = (int)(i - start) * offset;
+                        buffer[stride] = (byte)(sample & byte.MaxValue);
+                        buffer[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
+                        buffer[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
+                        buffer[stride + 3] = (byte)((sample >> 24) & byte.MaxValue);
                     }
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(size), size, null);
             }
 
-            return pcmData;
+            // Fill the rest of the buffer with silence
+            if (bufferLength > sampleLength)
+            {
+                for (var i = (int)sampleLength; i < bufferLength; i++)
+                {
+                    buffer[i] = 0;
+                }
+            }
+
+            return buffer;
         }
 
         /// <summary>
@@ -438,7 +465,8 @@ namespace Utilities.Audio
                 var lastMicrophonePosition = 0;
                 var inputBufferSize = clipData.InputBufferSize;
                 var sampleBuffer = new float[inputBufferSize];
-                var outputBuffer = new float[inputBufferSize];
+                var outputSamples = new float[inputBufferSize];
+                var outputBuffer = new byte[outputSamples.Length];
 
                 do
                 {
@@ -490,19 +518,14 @@ namespace Utilities.Audio
                                     finalSamples[sampleCount * clipData.Channels + i] = value;
                                 }
 
-                                outputBuffer[i] = value;
-                            }
-                            else
-                            {
-                                outputBuffer[i] = 0f;
+                                outputSamples[i] = value;
                             }
                         }
 
                         try
                         {
-                            // convert the output sample buffer to pcm bytes and invoke buffer callback
-                            var pcmData = Encode(outputBuffer, inputSampleRate: clipData.InputSampleRate, outputSampleRate: clipData.OutputSampleRate);
-                            await bufferCallback(pcmData).ConfigureAwait(false);
+                            outputBuffer = Encode(outputSamples, outputBuffer, 0, samplesToWrite);
+                            await bufferCallback(outputBuffer).ConfigureAwait(false);
                         }
                         catch (Exception e)
                         {
