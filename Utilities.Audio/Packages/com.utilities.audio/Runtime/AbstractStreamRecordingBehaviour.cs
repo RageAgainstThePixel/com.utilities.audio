@@ -73,13 +73,6 @@ namespace Utilities.Audio
                         data[i + j] = sample;
                     }
                 }
-                //else
-                //{
-                //    for (var j = 0; j < channels; j++)
-                //    {
-                //        data[i + j] = 0f; // Fill silence if queue is empty
-                //    }
-                //}
             }
         }
 
@@ -122,8 +115,7 @@ namespace Utilities.Audio
                         {
                             await fileStream.WriteAsync(bufferCallback, destroyCancellationToken);
 
-                            var bytes = bufferCallback.ToArray();
-                            var samples = PCMEncoder.Decode(bytes, inputSampleRate: recordingSampleRate, outputSampleRate: playbackSampleRate);
+                            var samples = PCMEncoder.Decode(bufferCallback.ToArray(), inputSampleRate: recordingSampleRate, outputSampleRate: playbackSampleRate);
 
                             foreach (var sample in samples)
                             {

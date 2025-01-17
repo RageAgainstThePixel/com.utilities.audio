@@ -454,7 +454,6 @@ namespace Utilities.Audio
                 var inputBufferSize = clipData.InputBufferSize;
                 var sampleBuffer = new float[inputBufferSize];
                 var outputSamples = new float[inputBufferSize];
-                var outputBuffer = new byte[outputSamples.Length];
 
                 do
                 {
@@ -512,8 +511,7 @@ namespace Utilities.Audio
 
                         try
                         {
-                            outputBuffer = Encode(outputSamples, outputBuffer, 0, samplesToWrite);
-                            await bufferCallback(outputBuffer).ConfigureAwait(false);
+                            await bufferCallback(Encode(Resample(outputSamples, null, clipData.InputSampleRate, clipData.OutputSampleRate), null, 0, samplesToWrite)).ConfigureAwait(false);
                         }
                         catch (Exception e)
                         {
@@ -553,9 +551,5 @@ namespace Utilities.Audio
                 }
             }
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float NormalizeSample(float value)
-            => Math.Max(-1f, Math.Min(1f, value));
     }
 }
