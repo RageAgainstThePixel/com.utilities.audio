@@ -73,13 +73,13 @@ namespace Utilities.Audio
                         data[i + j] = sample;
                     }
                 }
-                else
-                {
-                    for (var j = 0; j < channels; j++)
-                    {
-                        data[i + j] = 0f; // Fill silence if queue is empty
-                    }
-                }
+                //else
+                //{
+                //    for (var j = 0; j < channels; j++)
+                //    {
+                //        data[i + j] = 0f; // Fill silence if queue is empty
+                //    }
+                //}
             }
         }
 

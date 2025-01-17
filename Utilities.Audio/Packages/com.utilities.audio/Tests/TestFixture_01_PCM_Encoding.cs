@@ -33,9 +33,18 @@ namespace Utilities.Audio.Tests
             const int fixedSilenceAtStart = 512;
             const int fixedSilenceAtEnd = 256;
             var sineWaveSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, k_44100);
+            Assert.NotNull(sineWaveSamples);
+            Assert.AreEqual(k_44100, sineWaveSamples.Length);
             var encodedSineWave = PCMEncoder.Encode(sineWaveSamples, PCMFormatSize.EightBit);
+            Assert.NotNull(encodedSineWave);
+            Assert.AreEqual(k_44100 * (int)PCMFormatSize.EightBit, encodedSineWave.Length);
             var sineWaveWithSilenceSamples = TestUtilities.GenerateSineWaveSamplesWithSilence(TestFrequency, k_44100, fixedSilenceAtStart, fixedSilenceAtEnd);
+            Assert.NotNull(sineWaveWithSilenceSamples);
+            Assert.AreEqual(k_44100 + fixedSilenceAtStart + fixedSilenceAtEnd, sineWaveWithSilenceSamples.Length);
             var encodedSineWaveWithSilence = PCMEncoder.Encode(sineWaveWithSilenceSamples, PCMFormatSize.EightBit, true);
+            Assert.NotNull(encodedSineWaveWithSilence);
+            Assert.AreEqual(k_44100 * (int)PCMFormatSize.EightBit, encodedSineWaveWithSilence.Length);
+
             var sampleCount = encodedSineWave.Length;
 
             for (var i = 0; i < sampleCount; i++)
@@ -241,7 +250,6 @@ namespace Utilities.Audio.Tests
             const int fixedSilenceAtStart = 512;
             const int fixedSilenceAtEnd = 256;
             var testSamples = TestUtilities.GenerateSineWaveSamplesWithSilence(TestFrequency, k_44100, fixedSilenceAtStart, fixedSilenceAtEnd);
-
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.EightBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.EightBit);
 

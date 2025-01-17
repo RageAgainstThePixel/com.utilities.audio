@@ -80,29 +80,26 @@ namespace Utilities.Audio
         {
             start ??= 0;
             sampleLength ??= samples.Length;
-            var offset = (int)size;
-            var bufferLength = (int)sampleLength * offset;
+            var end = sampleLength + start;
+            var bufferLength = (int)sampleLength * (int)size;
 
-            // only update buffer if null or less than.
-            // If greater than we will just set the rest of the buffer to silence before returning buffer.
+            // only update buffer array if null or less than
             if (buffer == null || buffer.Length < bufferLength)
             {
                 buffer = new byte[bufferLength];
             }
 
-            bufferLength = buffer.Length;
-
             // Ensuring samples are within [-1,1] range
             for (var i = 0; i < sampleLength; i++)
             {
-                samples[i] = NormalizeSample(samples[i]);
+                samples[i] = Math.Max(-1f, Math.Min(1f, samples[i]));
             }
 
             // Convert and write data
             switch (size)
             {
                 case PCMFormatSize.EightBit:
-                    for (var i = (int)start; i < sampleLength; i++)
+                    for (var i = (int)start; i < end; i++)
                     {
                         var value = samples[i];
                         var sample = (int)Math.Max(Math.Min(Math.Round(value * 127 + 128), 255), 0);
@@ -111,33 +108,33 @@ namespace Utilities.Audio
                     }
                     break;
                 case PCMFormatSize.SixteenBit:
-                    for (var i = (int)start; i < sampleLength; i++)
+                    for (var i = (int)start; i < end; i++)
                     {
                         var value = samples[i];
                         var sample = (short)(value * short.MaxValue);
-                        var stride = (int)(i - start) * offset;
+                        var stride = (int)(i - start) * (int)size;
                         buffer[stride] = (byte)(sample & byte.MaxValue);
                         buffer[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
                     }
                     break;
                 case PCMFormatSize.TwentyFourBit:
-                    for (var i = (int)start; i < sampleLength; i++)
+                    for (var i = (int)start; i < end; i++)
                     {
                         var value = samples[i];
                         var sample = (int)(value * ((1 << 23) - 1));
                         sample = Math.Min(Math.Max(sample, -(1 << 23)), (1 << 23) - 1);
-                        var stride = (int)(i - start) * offset;
+                        var stride = (int)(i - start) * (int)size;
                         buffer[stride] = (byte)(sample & byte.MaxValue);
                         buffer[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
                         buffer[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
                     }
                     break;
                 case PCMFormatSize.ThirtyTwoBit:
-                    for (var i = (int)start; i < sampleLength; i++)
+                    for (var i = (int)start; i < end; i++)
                     {
                         var value = samples[i];
                         var sample = (int)(value * int.MaxValue);
-                        var stride = (int)(i - start) * offset;
+                        var stride = (int)(i - start) * (int)size;
                         buffer[stride] = (byte)(sample & byte.MaxValue);
                         buffer[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
                         buffer[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
@@ -146,15 +143,6 @@ namespace Utilities.Audio
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(size), size, null);
-            }
-
-            // Fill the rest of the buffer with silence
-            if (bufferLength > sampleLength)
-            {
-                for (var i = (int)sampleLength; i < bufferLength; i++)
-                {
-                    buffer[i] = 0;
-                }
             }
 
             return buffer;
