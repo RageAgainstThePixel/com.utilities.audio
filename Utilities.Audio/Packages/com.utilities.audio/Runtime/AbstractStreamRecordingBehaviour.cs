@@ -51,6 +51,7 @@ namespace Utilities.Audio
 #endif
 
         private readonly ConcurrentQueue<float> sampleQueue = new();
+        private FileStream fileStream;
 
         private void OnValidate()
         {
@@ -90,7 +91,7 @@ namespace Utilities.Audio
             {
                 if (RecordingManager.IsRecording)
                 {
-                    RecordingManager.EndRecording();
+                    EndRecording();
                 }
                 else
                 {
@@ -106,7 +107,7 @@ namespace Utilities.Audio
                         }
 
                         // write to a file
-                        var fileStream = new FileStream($"{Application.dataPath}/{DateTime.UtcNow:yy-MM-dd-ss}-recording.raw", FileMode.Create, FileAccess.Write, FileShare.Read);
+                        fileStream = new FileStream($"{Application.dataPath}/{DateTime.UtcNow:yy-MM-dd-ss}-recording.raw", FileMode.Create, FileAccess.Write, FileShare.Read);
 
                         // ReSharper disable once MethodHasAsyncOverload
                         RecordingManager.StartRecordingStream<PCMEncoder>(BufferCallback, recordingSampleRate, destroyCancellationToken);
@@ -127,10 +128,18 @@ namespace Utilities.Audio
             }
         }
 
+        private void EndRecording()
+        {
+            RecordingManager.EndRecording();
+            fileStream.Dispose();
+            fileStream = null;
+        }
+
 #if !UNITY_2022_1_OR_NEWER
         private void OnDestroy()
         {
             lifetimeCancellationTokenSource.Cancel();
+            EndRecording();
         }
 #endif
     }
