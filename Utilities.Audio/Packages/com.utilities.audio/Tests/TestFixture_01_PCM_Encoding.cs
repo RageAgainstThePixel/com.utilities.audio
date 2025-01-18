@@ -214,14 +214,23 @@ namespace Utilities.Audio.Tests
                 testSamples[i] = (float)i / testSamples.Length;
             }
 
-            var result = PCMEncoder.Resample(testSamples, null, k_44100, k_24000);
+            var downSample = PCMEncoder.Resample(testSamples, null, k_44100, k_24000);
 
-            Assert.AreEqual(24000, result.Length);
-            Assert.AreEqual(0f, result[0], Tolerance);
-            Assert.AreEqual(0.25f, result[6000], Tolerance);
-            Assert.AreEqual(0.5f, result[12000], Tolerance);
-            Assert.AreEqual(0.75f, result[18000], Tolerance);
-            Assert.AreEqual(1f, result[23999], Tolerance);
+            Assert.AreEqual(24000, downSample.Length);
+            Assert.AreEqual(0f, downSample[0], Tolerance);
+            Assert.AreEqual(0.25f, downSample[6000], Tolerance);
+            Assert.AreEqual(0.5f, downSample[12000], Tolerance);
+            Assert.AreEqual(0.75f, downSample[18000], Tolerance);
+            Assert.AreEqual(1f, downSample[23999], Tolerance);
+
+            var upSample = PCMEncoder.Resample(downSample, null, k_24000, k_44100);
+
+            Assert.AreEqual(44100, upSample.Length);
+            Assert.AreEqual(0f, upSample[0], Tolerance);
+            Assert.AreEqual(0.25f, upSample[11025], Tolerance);
+            Assert.AreEqual(0.5f, upSample[22050], Tolerance);
+            Assert.AreEqual(0.75f, upSample[33075], Tolerance);
+            Assert.AreEqual(1f, upSample[44099], Tolerance);
         }
 
         [Test]
