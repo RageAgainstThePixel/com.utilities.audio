@@ -130,8 +130,12 @@ namespace Utilities.Audio
 
         private void EndRecording()
         {
-            RecordingManager.EndRecording();
-            fileStream.Dispose();
+            if (RecordingManager.IsRecording)
+            {
+                RecordingManager.EndRecording();
+            }
+
+            fileStream?.Dispose();
             fileStream = null;
         }
 
