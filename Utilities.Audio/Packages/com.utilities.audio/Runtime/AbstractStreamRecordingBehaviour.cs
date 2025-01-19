@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -110,7 +109,8 @@ namespace Utilities.Audio
 
                         async Task BufferCallback(ReadOnlyMemory<byte> bufferCallback)
                         {
-                            // we need to resample the audio to match the playback sample rate of OnAudioFilterRead which should be the same as AudioSettings.outputSampleRate
+                            // we need to resample the audio to match the playback sample rate of OnAudioFilterRead
+                            // which should be the same as AudioSettings.outputSampleRate
                             var samples = PCMEncoder.Decode(bufferCallback.ToArray(), inputSampleRate: recordingSampleRate, outputSampleRate: playbackSampleRate);
 
                             foreach (var sample in samples)
