@@ -2,6 +2,7 @@
 
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -12,6 +13,10 @@ namespace Utilities.Audio
 {
     public class PCMEncoder : IEncoder
     {
+        private const int HammingWindowFilterLength = 32;
+
+        internal static readonly ISampleProvider DefaultSampleProvider = new UnitySampleProvider();
+
         /// <summary>
         /// Encodes the <see cref="samples"/> to raw pcm bytes.
         /// </summary>
@@ -19,10 +24,21 @@ namespace Utilities.Audio
         /// <param name="size">Size of PCM sample data.</param>
         /// <param name="trim">Optional, trim the silence from the data.</param>
         /// <param name="silenceThreshold">Optional, silence threshold to use for trimming operations.</param>
+        /// <param name="inputSampleRate"></param>
+        /// <param name="outputSampleRate"></param>
         /// <returns>Byte array PCM data.</returns>
         [Preserve]
-        public static byte[] Encode(float[] samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f)
+        public static byte[] Encode(float[] samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f, int? inputSampleRate = null, int? outputSampleRate = null)
         {
+            if (inputSampleRate.HasValue && outputSampleRate.HasValue)
+            {
+                samples = Resample(samples, null, inputSampleRate.Value, outputSampleRate.Value);
+            }
+            else if (inputSampleRate.HasValue || outputSampleRate.HasValue)
+            {
+                throw new ArgumentException("Both input and output sample rates must be specified to resample the audio data.");
+            }
+
             var sampleCount = samples.Length;
             var start = 0;
             var end = sampleCount;
@@ -56,11 +72,25 @@ namespace Utilities.Audio
                 }
             }
 
-            var offset = (int)size;
-            var pcmData = new byte[length * offset];
+            return Encode(samples, null, start, length, size);
+        }
+
+        [Preserve]
+        internal static byte[] Encode(float[] samples, byte[] buffer = null, int? start = null, int? sampleLength = null, PCMFormatSize size = PCMFormatSize.SixteenBit)
+        {
+            start ??= 0;
+            sampleLength ??= samples.Length;
+            var end = sampleLength + start;
+            var bufferLength = (int)sampleLength * (int)size;
+
+            // only update buffer array if null or less than
+            if (buffer == null || buffer.Length < bufferLength)
+            {
+                buffer = new byte[bufferLength];
+            }
 
             // Ensuring samples are within [-1,1] range
-            for (var i = 0; i < sampleCount; i++)
+            for (var i = 0; i < sampleLength; i++)
             {
                 samples[i] = Math.Max(-1f, Math.Min(1f, samples[i]));
             }
@@ -69,52 +99,53 @@ namespace Utilities.Audio
             switch (size)
             {
                 case PCMFormatSize.EightBit:
-                    for (var i = start; i < end; i++)
+                    for (var i = (int)start; i < end; i++)
                     {
                         var value = samples[i];
                         var sample = (int)Math.Max(Math.Min(Math.Round(value * 127 + 128), 255), 0);
-                        pcmData[i - start] = (byte)sample;
+                        var stride = (int)(i - start);
+                        buffer[stride] = (byte)sample;
                     }
                     break;
                 case PCMFormatSize.SixteenBit:
-                    for (var i = start; i < end; i++)
+                    for (var i = (int)start; i < end; i++)
                     {
                         var value = samples[i];
                         var sample = (short)(value * short.MaxValue);
-                        var stride = (i - start) * offset;
-                        pcmData[stride] = (byte)(sample & byte.MaxValue);
-                        pcmData[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
+                        var stride = (int)(i - start) * (int)size;
+                        buffer[stride] = (byte)(sample & byte.MaxValue);
+                        buffer[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
                     }
                     break;
                 case PCMFormatSize.TwentyFourBit:
-                    for (var i = start; i < end; i++)
+                    for (var i = (int)start; i < end; i++)
                     {
                         var value = samples[i];
                         var sample = (int)(value * ((1 << 23) - 1));
                         sample = Math.Min(Math.Max(sample, -(1 << 23)), (1 << 23) - 1);
-                        var stride = (i - start) * offset;
-                        pcmData[stride] = (byte)(sample & byte.MaxValue);
-                        pcmData[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
-                        pcmData[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
+                        var stride = (int)(i - start) * (int)size;
+                        buffer[stride] = (byte)(sample & byte.MaxValue);
+                        buffer[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
+                        buffer[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
                     }
                     break;
                 case PCMFormatSize.ThirtyTwoBit:
-                    for (var i = start; i < end; i++)
+                    for (var i = (int)start; i < end; i++)
                     {
                         var value = samples[i];
                         var sample = (int)(value * int.MaxValue);
-                        var stride = (i - start) * offset;
-                        pcmData[stride] = (byte)(sample & byte.MaxValue);
-                        pcmData[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
-                        pcmData[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
-                        pcmData[stride + 3] = (byte)((sample >> 24) & byte.MaxValue);
+                        var stride = (int)(i - start) * (int)size;
+                        buffer[stride] = (byte)(sample & byte.MaxValue);
+                        buffer[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
+                        buffer[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
+                        buffer[stride + 3] = (byte)((sample >> 24) & byte.MaxValue);
                     }
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(size), size, null);
             }
 
-            return pcmData;
+            return buffer;
         }
 
         /// <summary>
@@ -122,8 +153,11 @@ namespace Utilities.Audio
         /// </summary>
         /// <param name="pcmData">PCM data to decode.</param>
         /// <param name="size">Size of PCM sample data.</param>
+        /// <param name="inputSampleRate"></param>
+        /// <param name="outputSampleRate"></param>
+        /// <returns>Float array of samples.</returns>
         [Preserve]
-        public static float[] Decode(byte[] pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit)
+        public static float[] Decode(byte[] pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit, int? inputSampleRate = null, int? outputSampleRate = null)
         {
             if (pcmData.Length % (int)size != 0)
             {
@@ -177,6 +211,15 @@ namespace Utilities.Audio
                     throw new ArgumentOutOfRangeException(nameof(size), size, null);
             }
 
+            if (inputSampleRate.HasValue && outputSampleRate.HasValue)
+            {
+                samples = Resample(samples, null, inputSampleRate.Value, outputSampleRate.Value);
+            }
+            else if (inputSampleRate.HasValue || outputSampleRate.HasValue)
+            {
+                throw new ArgumentException("Both input and output sample rates must be specified to resample the audio data.");
+            }
+
             return samples;
         }
 
@@ -188,30 +231,47 @@ namespace Utilities.Audio
         /// <param name="outputSamplingRate">The target sampling rate to resample to.</param>
         /// <returns>Float array of samples at specified output sampling rate.</returns>
         [Preserve]
+        [Obsolete("use overload with buffer input")]
         public static float[] Resample(float[] samples, int inputSamplingRate, int outputSamplingRate)
+            => Resample(samples, null, inputSamplingRate, outputSamplingRate);
+
+        /// <summary>
+        /// Resample the sample data to the specified sampling rate.
+        /// </summary>
+        /// <remarks>
+        /// Uses simple linear interpolation.
+        /// </remarks>
+        /// <param name="samples">Samples to resample.</param>
+        /// <param name="buffer">The buffer to use for resampling.</param>
+        /// <param name="inputSampleRate">The sampling rate of the samples provided.</param>
+        /// <param name="outputSampleRate">The target sampling rate to resample to.</param>
+        /// <returns>Float array of samples at specified output sampling rate.</returns>
+        [Preserve]
+        public static float[] Resample(float[] samples, float[] buffer, int inputSampleRate, int outputSampleRate)
         {
-            var ratio = (double)outputSamplingRate / inputSamplingRate;
-            var outputLength = (int)(samples.Length * ratio);
-            var result = new float[outputLength];
+            if (inputSampleRate == outputSampleRate) { return samples; }
 
-            for (var i = 0; i < outputLength; i++)
+            var ratio = outputSampleRate / (double)inputSampleRate;
+            var resampledLength = (int)Math.Round(samples.Length * ratio, MidpointRounding.ToEven);
+            buffer ??= new float[resampledLength];
+
+            if (buffer.Length != resampledLength)
             {
-                var position = i / ratio;
-                var leftIndex = (int)Math.Floor(position);
-                var rightIndex = leftIndex + 1;
-                var fraction = position - leftIndex;
-
-                if (rightIndex >= samples.Length)
-                {
-                    result[i] = samples[leftIndex];
-                }
-                else
-                {
-                    result[i] = (float)(samples[leftIndex] * (1 - fraction) + samples[rightIndex] * fraction);
-                }
+                buffer = new float[resampledLength];
             }
 
-            return result;
+            for (var i = 0; i < resampledLength; i++)
+            {
+                var resampleIndex = Math.Round(i / ratio, MidpointRounding.ToEven);
+                var leftIndex = (int)Math.Floor(resampleIndex);
+                var rightIndex = leftIndex + 1;
+                var fraction = resampleIndex - leftIndex;
+                var leftSample = (leftIndex >= samples.Length ? samples[^1] : samples[leftIndex]) * (1 - fraction);
+                var rightSample = (rightIndex >= samples.Length ? samples[^1] : samples[rightIndex]) * fraction;
+                buffer[i] = (float)(leftSample + rightSample);
+            }
+
+            return buffer;
         }
 
         /// <inheritdoc />
@@ -227,7 +287,7 @@ namespace Utilities.Audio
 
             try
             {
-                await InternalStreamRecordAsync(clipData, null, bufferCallback, cancellationToken).ConfigureAwait(false);
+                await InternalStreamRecordAsync(clipData, null, bufferCallback, DefaultSampleProvider, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -263,8 +323,8 @@ namespace Utilities.Audio
             }
 
             var outputPath = string.Empty;
+            Tuple<string, AudioClip> result;
             RecordingManager.IsProcessing = true;
-            Tuple<string, AudioClip> result = null;
 
             try
             {
@@ -293,18 +353,21 @@ namespace Utilities.Audio
                 }
 
                 var totalSampleCount = 0;
-                var finalSamples = new float[clipData.MaxSamples ?? clipData.SampleRate * RecordingManager.MaxRecordingLength];
+                var maxSampleLength = (clipData.MaxSamples ?? clipData.OutputSampleRate * RecordingManager.MaxRecordingLength) * clipData.Channels;
+                var finalSamples = new float[maxSampleLength];
                 var writer = new BinaryWriter(outStream);
 
                 try
                 {
                     try
                     {
-                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, async buffer =>
+                        async Task BufferCallback(ReadOnlyMemory<byte> buffer)
                         {
                             writer.Write(buffer.Span);
                             await Task.Yield();
-                        }, cancellationToken).ConfigureAwait(true);
+                        }
+
+                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, BufferCallback, DefaultSampleProvider, cancellationToken).ConfigureAwait(true);
                     }
                     finally
                     {
@@ -350,7 +413,7 @@ namespace Utilities.Audio
                 Array.Copy(finalSamples, microphoneData, microphoneData.Length);
                 await Awaiters.UnityMainThread; // switch back to main thread to call unity apis
                 // Create a new copy of the final recorded clip.
-                var newClip = AudioClip.Create(clipData.Name, microphoneData.Length, clipData.Channels, clipData.SampleRate, false);
+                var newClip = AudioClip.Create(clipData.Name, microphoneData.Length, clipData.Channels, clipData.OutputSampleRate, false);
                 newClip.SetData(microphoneData, 0);
                 result = new Tuple<string, AudioClip>(outputPath, newClip);
                 callback?.Invoke(result);
@@ -367,23 +430,45 @@ namespace Utilities.Audio
             return result;
         }
 
-        private static async Task<(float[], int)> InternalStreamRecordAsync(ClipData clipData, float[] finalSamples, Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken)
+        internal static async Task<(float[], int)> InternalStreamRecordAsync(ClipData clipData, float[] finalSamples, Func<ReadOnlyMemory<byte>, Task> bufferCallback, ISampleProvider sampleProvider, CancellationToken cancellationToken)
         {
             try
             {
+                int? maxSampleLength = null;
+
+                if (finalSamples != null)
+                {
+                    // make sure that the final sample buffer matches the expected length
+                    maxSampleLength = (clipData.MaxSamples ?? clipData.OutputSampleRate * RecordingManager.MaxRecordingLength) * clipData.Channels;
+
+                    if (finalSamples.Length != maxSampleLength)
+                    {
+                        Debug.LogWarning($"[{nameof(RecordingManager)}] final sample buffer length does match expected length! creating new buffer...");
+                        finalSamples = new float[maxSampleLength.Value];
+                    }
+                }
+
                 var sampleCount = 0;
                 var shouldStop = false;
                 var lastMicrophonePosition = 0;
-                var sampleBuffer = new float[clipData.BufferSize];
+                var inputBufferSize = clipData.InputBufferSize;
+                var sampleBuffer = new float[inputBufferSize];
+                var sampleBufferLength = sampleBuffer.Length;
+                var outputSamples = new float[inputBufferSize];
+
                 do
                 {
                     await Awaiters.UnityMainThread; // ensure we're on main thread to call unity apis
-                    var microphonePosition = Microphone.GetPosition(clipData.Device);
+                    var microphonePosition = sampleProvider.GetPosition(clipData.Device);
 
                     if (microphonePosition <= 0 && lastMicrophonePosition == 0)
                     {
-                        // Skip this iteration if there's no new data
-                        // wait for next update
+                        if (RecordingManager.EnableDebug)
+                        {
+                            Debug.LogWarning($"[{nameof(RecordingManager)}] Microphone position is 0, skipping...");
+                        }
+
+                        // Skip this iteration if there aren't any samples
                         continue;
                     }
 
@@ -393,7 +478,7 @@ namespace Utilities.Audio
                     if (isLooping)
                     {
                         // Microphone loopback detected.
-                        samplesToWrite = clipData.BufferSize - lastMicrophonePosition;
+                        samplesToWrite = inputBufferSize - lastMicrophonePosition;
 
                         if (RecordingManager.EnableDebug)
                         {
@@ -406,35 +491,32 @@ namespace Utilities.Audio
                         samplesToWrite = microphonePosition - lastMicrophonePosition;
                     }
 
-                    if (samplesToWrite > 0)
+                    if (samplesToWrite > 0 && !cancellationToken.IsCancellationRequested)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        clipData.Clip.GetData(sampleBuffer, 0);
+                        sampleProvider.GetData(clipData.Clip, sampleBuffer);
 
-                        for (var i = 0; i < samplesToWrite; i++)
+                        for (var i = 0; i < sampleBufferLength; i++)
                         {
-                            var bufferIndex = (lastMicrophonePosition + i) % clipData.BufferSize; // Wrap around index.
-                            var value = sampleBuffer[bufferIndex];
-                            var sample = (short)(Math.Max(-1f, Math.Min(1f, value)) * short.MaxValue);
-                            var sampleData = new ReadOnlyMemory<byte>(new[]
+                            if (i < samplesToWrite)
                             {
-                                (byte)(sample & byte.MaxValue),
-                                (byte)(sample >> 8 & byte.MaxValue)
-                            });
+                                var value = sampleBuffer[(lastMicrophonePosition + i) % inputBufferSize];
 
-                            try
-                            {
-                                await bufferCallback.Invoke(sampleData).ConfigureAwait(false);
-                            }
-                            catch (Exception e)
-                            {
-                                Debug.LogException(new Exception($"[{nameof(PCMEncoder)}] error occurred when buffering audio", e));
-                            }
+                                if (finalSamples is { Length: > 0 })
+                                {
+                                    finalSamples[sampleCount * clipData.Channels + i] = value;
+                                }
 
-                            if (finalSamples is { Length: > 0 })
-                            {
-                                finalSamples[sampleCount * clipData.Channels + i] = sampleBuffer[bufferIndex];
+                                outputSamples[i] = value;
                             }
+                        }
+
+                        try
+                        {
+                            await bufferCallback(Encode(outputSamples, null, 0, samplesToWrite)).ConfigureAwait(false);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogException(new Exception($"[{nameof(PCMEncoder)}] error occurred when buffering audio", e));
                         }
 
                         lastMicrophonePosition = microphonePosition;
@@ -446,7 +528,7 @@ namespace Utilities.Audio
                         }
                     }
 
-                    if (clipData.MaxSamples.HasValue && sampleCount >= clipData.MaxSamples || cancellationToken.IsCancellationRequested)
+                    if (cancellationToken.IsCancellationRequested || sampleCount >= maxSampleLength)
                     {
                         if (RecordingManager.EnableDebug)
                         {
@@ -461,7 +543,8 @@ namespace Utilities.Audio
             finally
             {
                 RecordingManager.IsRecording = false;
-                Microphone.End(clipData.Device);
+                await Awaiters.UnityMainThread; // ensure we're on main thread to call unity apis
+                sampleProvider.End(clipData.Device);
 
                 if (RecordingManager.EnableDebug)
                 {
