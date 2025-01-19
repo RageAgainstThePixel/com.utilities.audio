@@ -220,25 +220,8 @@ namespace Utilities.Audio
                 Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq}");
             }
 
-            var inputSampleRate = outputSampleRate;
-
-            if (inputSampleRate <= minFreq)
-            {
-                inputSampleRate = minFreq;
-            }
-
-            if (inputSampleRate >= maxFreq)
-            {
-                inputSampleRate = maxFreq;
-            }
-
-            if (EnableDebug && inputSampleRate != outputSampleRate)
-            {
-                Debug.LogWarning($"[{nameof(RecordingManager)}] device frequency range is outside of the requested output sample range. Clip will be resampled: {inputSampleRate}->{outputSampleRate}");
-            }
-
             // create dummy clip for recording purposes with a 1-second buffer.
-            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, inputSampleRate);
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, outputSampleRate);
 
             if (clip == null)
             {
@@ -361,25 +344,8 @@ namespace Utilities.Audio
                 Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq}");
             }
 
-            var inputSampleRate = outputSampleRate;
-
-            if (inputSampleRate <= minFreq)
-            {
-                inputSampleRate = minFreq;
-            }
-
-            if (inputSampleRate >= maxFreq)
-            {
-                inputSampleRate = maxFreq;
-            }
-
-            if (EnableDebug && inputSampleRate != outputSampleRate)
-            {
-                Debug.LogWarning($"[{nameof(RecordingManager)}] device frequency range is outside of the requested output sample range. Clip will be resampled: {inputSampleRate}->{outputSampleRate}");
-            }
-
             // create dummy clip for recording purposes with a 1-second buffer.
-            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, inputSampleRate);
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, outputSampleRate);
 
             if (clip == null)
             {

@@ -51,7 +51,6 @@ namespace Utilities.Audio
 #endif
 
         private readonly ConcurrentQueue<float> sampleQueue = new();
-        private FileStream fileStream;
 
         private void OnValidate()
         {
@@ -91,7 +90,7 @@ namespace Utilities.Audio
             {
                 if (RecordingManager.IsRecording)
                 {
-                    EndRecording();
+                    RecordingManager.EndRecording();
                 }
                 else
                 {
@@ -106,44 +105,29 @@ namespace Utilities.Audio
                             UnityEngine.Debug.Log($"playback sample rate: {playbackSampleRate}");
                         }
 
-                        // write to a file
-                        fileStream = new FileStream($"{Application.dataPath}/{DateTime.UtcNow:yy-MM-dd-ss}-recording.raw", FileMode.Create, FileAccess.Write, FileShare.Read);
-
                         // ReSharper disable once MethodHasAsyncOverload
                         RecordingManager.StartRecordingStream<PCMEncoder>(BufferCallback, recordingSampleRate, destroyCancellationToken);
 
                         async Task BufferCallback(ReadOnlyMemory<byte> bufferCallback)
                         {
-                            await fileStream.WriteAsync(bufferCallback, destroyCancellationToken);
-
                             var samples = PCMEncoder.Decode(bufferCallback.ToArray(), inputSampleRate: recordingSampleRate, outputSampleRate: playbackSampleRate);
 
                             foreach (var sample in samples)
                             {
                                 sampleQueue.Enqueue(sample);
                             }
+
+                            await Task.Yield();
                         }
                     }
                 }
             }
         }
 
-        private void EndRecording()
-        {
-            if (RecordingManager.IsRecording)
-            {
-                RecordingManager.EndRecording();
-            }
-
-            fileStream?.Dispose();
-            fileStream = null;
-        }
-
 #if !UNITY_2022_1_OR_NEWER
         private void OnDestroy()
         {
             lifetimeCancellationTokenSource.Cancel();
-            EndRecording();
         }
 #endif
     }

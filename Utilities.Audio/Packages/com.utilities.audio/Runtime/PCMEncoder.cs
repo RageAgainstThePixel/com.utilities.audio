@@ -453,6 +453,7 @@ namespace Utilities.Audio
                 var lastMicrophonePosition = 0;
                 var inputBufferSize = clipData.InputBufferSize;
                 var sampleBuffer = new float[inputBufferSize];
+                var sampleBufferLength = sampleBuffer.Length;
                 var outputSamples = new float[inputBufferSize];
 
                 do
@@ -494,7 +495,7 @@ namespace Utilities.Audio
                     {
                         sampleProvider.GetData(clipData.Clip, sampleBuffer);
 
-                        for (var i = 0; i < sampleBuffer.Length; i++)
+                        for (var i = 0; i < sampleBufferLength; i++)
                         {
                             if (i < samplesToWrite)
                             {
@@ -511,7 +512,7 @@ namespace Utilities.Audio
 
                         try
                         {
-                            await bufferCallback(Encode(Resample(outputSamples, null, clipData.InputSampleRate, clipData.OutputSampleRate), null, 0, samplesToWrite)).ConfigureAwait(false);
+                            await bufferCallback(Encode(outputSamples, null, 0, samplesToWrite)).ConfigureAwait(false);
                         }
                         catch (Exception e)
                         {
