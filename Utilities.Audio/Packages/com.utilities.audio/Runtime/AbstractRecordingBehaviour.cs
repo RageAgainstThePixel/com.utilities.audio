@@ -22,6 +22,19 @@ namespace Utilities.Audio
         [SerializeField]
         private bool debug;
 
+        [SerializeField]
+        private SampleRates sampleRate = SampleRates.Hz44100;
+
+        public enum SampleRates
+        {
+            Hz16000 = 16000,
+            Hz24000 = 24000,
+            Hz22050 = 22050,
+            Hz44100 = 44100,
+            Hz48000 = 48000,
+            Hz96000 = 96000
+        }
+
         public bool Debug
         {
             get => debug;
@@ -120,7 +133,7 @@ namespace Utilities.Audio
             try
             {
                 // Starts the recording process
-                var (path, newClip) = await RecordingManager.StartRecordingAsync<TEncoder>(cancellationToken: destroyCancellationToken);
+                var (path, newClip) = await RecordingManager.StartRecordingAsync<TEncoder>(outputSampleRate: (int)sampleRate, cancellationToken: destroyCancellationToken);
 
                 if (debug)
                 {

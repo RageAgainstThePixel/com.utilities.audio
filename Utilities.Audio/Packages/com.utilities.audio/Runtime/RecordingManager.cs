@@ -46,6 +46,7 @@ namespace Utilities.Audio
             }
         }
 
+        [Obsolete("removed. Set OutputSamplingRate when requesting new recording.")]
         public static int Frequency { get; set; } = 44100;
 
         private static bool isRecording;
@@ -151,26 +152,36 @@ namespace Utilities.Audio
         /// </summary>
         public static string DefaultRecordingDevice { get; set; }
 
-        /// <summary>
-        /// Starts the recording process and saves a new clip to disk.
-        /// </summary>
-        /// <param name="clipName">Optional, name for the clip.</param>
-        /// <param name="saveDirectory">Optional, the directory to save the clip.</param>
-        /// <param name="callback">Optional, callback when recording is complete.</param>
-        /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async void StartRecording<TEncoder>(string clipName = null, string saveDirectory = null, Action<Tuple<string, AudioClip>> callback = null, CancellationToken cancellationToken = default) where TEncoder : IEncoder
-        {
-            var result = await StartRecordingAsync<TEncoder>(clipName, saveDirectory, cancellationToken).ConfigureAwait(true);
-            callback?.Invoke(result);
-        }
+        [Obsolete("use new overload with outputSampleRate")]
+        public static async void StartRecording<TEncoder>(string clipName, string saveDirectory, Action<Tuple<string, AudioClip>> callback, CancellationToken cancellationToken) where TEncoder : IEncoder
+            => await StartRecordingAsync<TEncoder>(clipName, saveDirectory, 44100, cancellationToken).ConfigureAwait(true);
 
         /// <summary>
         /// Starts the recording process and saves a new clip to disk.
         /// </summary>
         /// <param name="clipName">Optional, name for the clip.</param>
         /// <param name="saveDirectory">Optional, the directory to save the clip.</param>
+        /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
+        /// <param name="callback">Optional, callback when recording is complete.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async Task<Tuple<string, AudioClip>> StartRecordingAsync<TEncoder>(string clipName = null, string saveDirectory = null, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+        public static async void StartRecording<TEncoder>(string clipName = null, string saveDirectory = null, int outputSampleRate = 44100, Action<Tuple<string, AudioClip>> callback = null, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+        {
+            var result = await StartRecordingAsync<TEncoder>(clipName, saveDirectory, outputSampleRate, cancellationToken).ConfigureAwait(true);
+            callback?.Invoke(result);
+        }
+
+        [Obsolete("use new overload with outputSampleRate")]
+        public static async Task<Tuple<string, AudioClip>> StartRecordingAsync<TEncoder>(string clipName, string saveDirectory, CancellationToken cancellationToken) where TEncoder : IEncoder
+          => await StartRecordingAsync<TEncoder>(clipName, saveDirectory, 44100, cancellationToken).ConfigureAwait(true);
+
+        /// <summary>
+        /// Starts the recording process and saves a new clip to disk.
+        /// </summary>
+        /// <param name="clipName">Optional, name for the clip.</param>
+        /// <param name="saveDirectory">Optional, the directory to save the clip.</param>
+        /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
+        /// <param name="cancellationToken">Optional, task cancellation token.</param>
+        public static async Task<Tuple<string, AudioClip>> StartRecordingAsync<TEncoder>(string clipName = null, string saveDirectory = null, int outputSampleRate = 44100, CancellationToken cancellationToken = default) where TEncoder : IEncoder
         {
             if (IsBusy)
             {
@@ -209,25 +220,8 @@ namespace Utilities.Audio
                 Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq}");
             }
 
-            var sampleRate = Frequency;
-
-            if (sampleRate <= minFreq)
-            {
-                sampleRate = minFreq;
-            }
-
-            if (sampleRate >= maxFreq)
-            {
-                sampleRate = maxFreq;
-            }
-
-            if (EnableDebug && sampleRate != Frequency)
-            {
-                Debug.LogWarning($"[{nameof(RecordingManager)}] Invalid Frequency {Frequency}. Using {sampleRate}");
-            }
-
             // create dummy clip for recording purposes with a 1-second buffer.
-            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, sampleRate);
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, outputSampleRate);
 
             if (clip == null)
             {
@@ -265,7 +259,7 @@ namespace Utilities.Audio
                     encoderCache.TryAdd(typeof(TEncoder), encoder);
                 }
 
-                var clipData = InitializeRecording(clip);
+                var clipData = InitializeRecording(clip, outputSampleRate);
                 clipData.MaxSamples = MaxRecordingLength * clip.frequency;
                 return await encoder.StreamSaveToDiskAsync(clipData, saveDirectory, OnClipRecorded, cancellationTokenSource.Token);
             }
@@ -280,8 +274,10 @@ namespace Utilities.Audio
                     isRecording = false;
                     isProcessing = false;
                 }
-#if UNITY_EDITOR
+
                 await Awaiters.UnityMainThread;
+
+#if UNITY_EDITOR
 
                 if (EnableDebug)
                 {
@@ -295,20 +291,26 @@ namespace Utilities.Audio
             return null;
         }
 
-        /// <summary>
-        /// Starts the recording process and buffers the samples back as <see cref="ReadOnlyMemory{Tbytes}"/>.
-        /// </summary>
-        /// <param name="bufferCallback">The buffer callback with new sample data.</param>
-        /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async void StartRecordingStream<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken = default) where TEncoder : IEncoder
-            => await StartRecordingStreamAsync<TEncoder>(bufferCallback, cancellationToken).ConfigureAwait(true);
+        [Obsolete("use new overload with outputSampleRate")]
+        public static async void StartRecordingStream<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken) where TEncoder : IEncoder
+            => await StartRecordingStreamAsync<TEncoder>(bufferCallback, 44100, cancellationToken).ConfigureAwait(true);
 
         /// <summary>
         /// Starts the recording process and buffers the samples back as <see cref="ReadOnlyMemory{Tbytes}"/>.
         /// </summary>
         /// <param name="bufferCallback">The buffer callback with new sample data.</param>
+        /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async Task StartRecordingStreamAsync<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+        public static async void StartRecordingStream<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+            => await StartRecordingStreamAsync<TEncoder>(bufferCallback, outputSampleRate, cancellationToken).ConfigureAwait(true);
+
+        /// <summary>
+        /// Starts the recording process and buffers the samples back as <see cref="ReadOnlyMemory{Tbytes}"/>.
+        /// </summary>
+        /// <param name="bufferCallback">The buffer callback with new sample data.</param>
+        /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
+        /// <param name="cancellationToken">Optional, task cancellation token.</param>
+        public static async Task StartRecordingStreamAsync<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default) where TEncoder : IEncoder
         {
             if (IsBusy)
             {
@@ -342,25 +344,8 @@ namespace Utilities.Audio
                 Debug.Log($"[{nameof(RecordingManager)}] Recording device(s): {deviceName} | minFreq: {minFreq} | maxFreq {maxFreq}");
             }
 
-            var sampleRate = Frequency;
-
-            if (sampleRate <= minFreq)
-            {
-                sampleRate = minFreq;
-            }
-
-            if (sampleRate >= maxFreq)
-            {
-                sampleRate = maxFreq;
-            }
-
-            if (EnableDebug && sampleRate != Frequency)
-            {
-                Debug.LogWarning($"[{nameof(RecordingManager)}] Invalid Frequency {Frequency}. Using {sampleRate}");
-            }
-
             // create dummy clip for recording purposes with a 1-second buffer.
-            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, sampleRate);
+            var clip = Microphone.Start(DefaultRecordingDevice, loop: true, length: 1, outputSampleRate);
 
             if (clip == null)
             {
@@ -381,15 +366,6 @@ namespace Utilities.Audio
                 cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             }
 
-#if UNITY_EDITOR
-            if (EnableDebug)
-            {
-                Debug.Log($"[{nameof(RecordingManager)}] <>Disable auto refresh<>");
-            }
-
-            UnityEditor.AssetDatabase.DisallowAutoRefresh();
-#endif
-
             try
             {
                 if (!encoderCache.TryGetValue(typeof(TEncoder), out var encoder))
@@ -398,7 +374,7 @@ namespace Utilities.Audio
                     encoderCache.TryAdd(typeof(TEncoder), encoder);
                 }
 
-                await encoder.StreamRecordingAsync(InitializeRecording(clip), bufferCallback, cancellationTokenSource.Token);
+                await encoder.StreamRecordingAsync(InitializeRecording(clip, outputSampleRate), bufferCallback, cancellationTokenSource.Token);
             }
             catch (Exception e)
             {
@@ -411,16 +387,8 @@ namespace Utilities.Audio
                     isRecording = false;
                     isProcessing = false;
                 }
-#if UNITY_EDITOR
+
                 await Awaiters.UnityMainThread;
-
-                if (EnableDebug)
-                {
-                    Debug.Log($"[{nameof(RecordingManager)}] <>Enable auto refresh<>");
-                }
-
-                UnityEditor.AssetDatabase.AllowAutoRefresh();
-#endif
             }
         }
 
@@ -449,7 +417,7 @@ namespace Utilities.Audio
             }
         }
 
-        private static ClipData InitializeRecording(AudioClip micInputClip)
+        private static ClipData InitializeRecording(AudioClip micInputClip, int outputSampleRate)
         {
             var device = DefaultRecordingDevice;
 
@@ -463,11 +431,11 @@ namespace Utilities.Audio
                 throw new AccessViolationException("Recording already in progress!");
             }
 
-            var clipData = new ClipData(micInputClip, device);
+            var clipData = new ClipData(micInputClip, device, outputSampleRate);
 
             if (EnableDebug)
             {
-                Debug.Log($"[{nameof(RecordingManager)}] Initializing data for {clipData.Name}. Channels: {clipData.Channels}, Sample Rate: {clipData.SampleRate}, Sample buffer size: {clipData.BufferSize}, Max Sample Length: {clipData.MaxSamples}");
+                Debug.Log($"[{nameof(RecordingManager)}] Initializing data for {clipData.Name}. Channels: {clipData.Channels}, Input Sample Rate: {clipData.InputSampleRate}, Output Sample Rate: {clipData.OutputSampleRate} Sample buffer size: {clipData.InputBufferSize}, Max Sample Length: {clipData.MaxSamples}");
             }
 
             return clipData;
