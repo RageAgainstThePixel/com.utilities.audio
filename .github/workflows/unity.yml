@@ -6,44 +6,60 @@ on:
     branches:
       - 'main'
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
     branches:
-      - '*'
+      - '**'
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ (github.event_name == 'pull_request' || github.event.action == 'synchronize') }}
+  cancel-in-progress: ${{(github.event_name == 'pull_request' || github.event.action == 'synchronize')}}
 jobs:
   build:
     name: ${{ matrix.unity-version }} ${{ matrix.build-target }} ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-15]
-        unity-version: [2021.x, 2022.x, 6000.x]
-        include:
+        include: # for each os specify the build targets
+          - os: ubuntu-latest
+            unity-version: 2022.x
+            build-target: StandaloneLinux64
+          - os: ubuntu-latest
+            unity-version: 6000.x
+            build-target: StandaloneLinux64
+          - os: ubuntu-latest
+            unity-version: 2022.x
+            build-target: WebGL
+          - os: ubuntu-latest
+            unity-version: 6000.x
+            build-target: WebGL
+          - os: ubuntu-latest
+            unity-version: 2022.x
+            build-target: Android
+          - os: ubuntu-latest
+            unity-version: 6000.x
+            build-target: Android
+          - os: ubuntu-latest
+            unity-version: 2022.x
+            build-target: iOS
+          - os: ubuntu-latest
+            unity-version: 6000.x
+            build-target: iOS
           - os: windows-latest
+            unity-version: 2022.x
             build-target: StandaloneWindows64
-          - os: macos-15
+          - os: windows-latest
+            unity-version: 6000.x
+            build-target: StandaloneWindows64
+          - os: macos-latest
+            unity-version: 2022.x
             build-target: StandaloneOSX
-          - os: ubuntu-latest
-            unity-version: 2021.x
-            build-target: StandaloneLinux64
-          - os: ubuntu-latest
-            unity-version: 2022.x
-            build-target: StandaloneLinux64
-          - os: ubuntu-latest
+          - os: macos-latest
             unity-version: 6000.x
-            build-target: StandaloneLinux64
-          - os: ubuntu-latest
-            unity-version: 2021.x
-            build-target: WebGL
-          - os: ubuntu-latest
-            unity-version: 2022.x
-            build-target: WebGL
-          - os: ubuntu-latest
-            unity-version: 6000.x
-            build-target: WebGL
+            build-target: StandaloneOSX
     steps:
       - uses: actions/checkout@v4
       - uses: RageAgainstThePixel/unity-setup@v1
@@ -73,6 +89,10 @@ jobs:
           log-name: '${{ matrix.build-target }}-Build'
           build-target: ${{ matrix.build-target }}
           args: '-quit -nographics -batchmode -executeMethod Utilities.Editor.BuildPipeline.UnityPlayerBuildTools.StartCommandLineBuild'
+      - uses: RageAgainstThePixel/unity-test-summary@v1
+        if: success() || failure()
+        with:
+          test-results: ${{ github.workspace }}/**/*.xml
       - uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
@@ -81,4 +101,3 @@ jobs:
           name: '${{ github.run_number }}.${{ github.run_attempt }}-${{ matrix.os }}-${{ matrix.unity-version }}-${{ matrix.build-target }}-Artifacts'
           path: |
             ${{ github.workspace }}/**/*.log
-            ${{ github.workspace }}/**/*.xml
