@@ -49,7 +49,11 @@ namespace Utilities.Audio
         private CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
 #endif
 
-        private readonly ConcurrentQueue<float> sampleQueue = new();
+#if PLATFORM_WEBGL
+        private readonly ConcurrentQueue<AudioClip> audioQueue = new();
+#else
+        private readonly ConcurrentQueue<float> audioQueue = new();
+#endif
 
         private void OnValidate()
         {
@@ -59,13 +63,49 @@ namespace Utilities.Audio
             }
         }
 
+#if PLATFORM_WEBGL
+        private async void AudioPlaybackLoop()
+        {
+            try
+            {
+                do
+                {
+                    if (!audioSource.isPlaying &&
+                        audioQueue.TryDequeue(out var clip))
+                    {
+                        try
+                        {
+                            UnityEngine.Debug.Log($"playing partial clip: {clip.name} | ({audioQueue.Count} remaining)");
+                            audioSource.PlayOneShot(clip);
+                            // ReSharper disable once MethodSupportsCancellation
+                            await Task.Delay(TimeSpan.FromSeconds(clip.length)).ConfigureAwait(true);
+                        }
+                        finally
+                        {
+                            Destroy(clip);
+                        }
+                    }
+                    else
+                    {
+                        await Task.Yield();
+                    }
+                } while (!destroyCancellationToken.IsCancellationRequested);
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogException(e);
+                // restart playback loop
+                AudioPlaybackLoop();
+            }
+        }
+#else
         private void OnAudioFilterRead(float[] data, int channels)
         {
-            if (sampleQueue.Count < data.Length) { return; }
+            if (audioQueue.Count < data.Length) { return; }
 
             for (var i = 0; i < data.Length; i += channels)
             {
-                if (sampleQueue.TryDequeue(out var sample))
+                if (audioQueue.TryDequeue(out var sample))
                 {
                     for (var j = 0; j < channels; j++)
                     {
@@ -74,6 +114,7 @@ namespace Utilities.Audio
                 }
             }
         }
+#endif
 
         private void Awake() => OnValidate();
 
@@ -81,6 +122,7 @@ namespace Utilities.Audio
         {
             // Enable debugging
             RecordingManager.EnableDebug = debug;
+            AudioPlaybackLoop();
         }
 
         private void Update()
@@ -112,11 +154,16 @@ namespace Utilities.Audio
                             // we need to resample the audio to match the playback sample rate of OnAudioFilterRead
                             // which should be the same as AudioSettings.outputSampleRate
                             var samples = PCMEncoder.Decode(bufferCallback.ToArray(), inputSampleRate: recordingSampleRate, outputSampleRate: playbackSampleRate);
-
+#if PLATFORM_WEBGL
+                            var clip = AudioClip.Create("microphone_recording", samples.Length, 1, AudioSettings.outputSampleRate, false);
+                            clip.SetData(samples, 0);
+                            audioQueue.Enqueue(clip);
+#else
                             foreach (var sample in samples)
                             {
-                                sampleQueue.Enqueue(sample);
+                                audioQueue.Enqueue(sample);
                             }
+#endif
 
                             await Task.Yield();
                         }

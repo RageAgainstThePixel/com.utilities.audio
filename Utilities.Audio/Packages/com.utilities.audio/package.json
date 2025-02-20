@@ -27,6 +27,11 @@
       "displayName": "PCMRecording",
       "description": "Contains sample scene with PCMRecordingBehaviour that will progressively save clip to disk as it records, then plays back the recording.",
       "path": "Samples~/PCMRecording"
+    },
+    {
+      "displayName": "PCMStreamRecording",
+      "description": "Contains sample scene with PCMStreamRecordingBehaviour that will continuously stream the recording and play it back in realtime.",
+      "path": "Samples~/PCMStreamRecording"
     }
   ],
   "publishConfig": {

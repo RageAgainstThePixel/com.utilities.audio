@@ -12,6 +12,8 @@ namespace Utilities.Encoder.Ogg.Samples.Recording
         [SerializeField]
         private TMP_Dropdown dropdown;
 
+        private bool hasRefreshed;
+
         private void OnValidate()
         {
             if (dropdown == null)
@@ -22,16 +24,22 @@ namespace Utilities.Encoder.Ogg.Samples.Recording
 
         private void Awake()
         {
+            OnValidate();
             dropdown.onValueChanged.AddListener(OnDeviceSelected);
         }
 
-        private void OnEnable()
+        private void OnApplicationFocus(bool hasFocus)
         {
-            RefreshDeviceList();
+            if (hasFocus)
+            {
+                RefreshDeviceList();
+            }
         }
 
         private void Update()
         {
+            if (!hasRefreshed) { return; }
+
             if (Microphone.devices.Length != dropdown.options.Count)
             {
                 RefreshDeviceList();
@@ -48,6 +56,7 @@ namespace Utilities.Encoder.Ogg.Samples.Recording
             dropdown.ClearOptions();
             var dropdownOptions = Microphone.devices.Select(device => new TMP_Dropdown.OptionData(device)).ToList();
             dropdown.AddOptions(dropdownOptions);
+            hasRefreshed = true;
         }
 
         private void OnDeviceSelected(int index)

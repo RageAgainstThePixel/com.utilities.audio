@@ -132,7 +132,7 @@ namespace Utilities.Audio
             {
                 if (!permissionsGranted)
                 {
-                    Debug.LogWarning(k_NotInitialized);
+                    InitializeMicrophone();
                 }
                 return deviceList;
             }
@@ -150,16 +150,14 @@ namespace Utilities.Audio
         public static async Task<bool> RequestRecordingPermissionsAsync(CancellationToken cancellationToken)
         {
 #if PLATFORM_WEBGL && !UNITY_EDITOR
-            lock (permissionTcs)
+            if (permissionsGranted) { return true; }
+            if (permissionTcs != null)
             {
-                if (permissionTcs != null)
-                {
-                    Debug.LogWarning("Permission request already in progress!");
-                    return false;
-                }
-
-                permissionTcs = new TaskCompletionSource<bool>();
+                Debug.LogWarning("Permission request already in progress!");
+                return false;
             }
+
+            permissionTcs = new TaskCompletionSource<bool>();
 
             try
             {
@@ -168,29 +166,51 @@ namespace Utilities.Audio
             }
             finally
             {
-                lock (permissionTcs)
-                {
-                    permissionTcs = null;
-                }
+                permissionTcs = null;
             }
 #elif UNITY_ANDROID
             if (UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Microphone))
             {
-                // The user authorized use of the microphone.
+                return true;
             }
-            else
+
+            var permissionTcs = new TaskCompletionSource<bool>();
+            var callbacks = new UnityEngine.Android.PermissionCallbacks();
+
+            void PermissionGranted(string permissionName)
             {
-                // We do not have permission to use the microphone.
-                // Ask for permission or proceed without the functionality enabled.
-                UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Microphone);
+                permissionTcs.TrySetResult(true);
             }
-            await Task.Yield();
-            return true;
+
+            void PermissionDenied(string permissionName)
+            {
+                permissionTcs.TrySetResult(false);
+            }
+
+            try
+            {
+                callbacks.PermissionGranted += PermissionGranted;
+                callbacks.PermissionDenied += PermissionDenied;
+                callbacks.PermissionDeniedAndDontAskAgain += PermissionDenied;
+                UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Microphone, callbacks);
+                return await permissionTcs.Task.WithCancellation(cancellationToken);
+            }
+            finally
+            {
+                callbacks.PermissionGranted -= PermissionGranted;
+                callbacks.PermissionDenied -= PermissionDenied;
+                callbacks.PermissionDeniedAndDontAskAgain -= PermissionDenied;
+            }
 #elif PLATFORM_IOS
-            await Task.Yield();
-            return true;
+            if (Application.HasUserAuthorization(UserAuthorization.Microphone))
+            {
+                return true;
+            }
+
+            await Application.RequestUserAuthorization(UserAuthorization.Microphone);
+            return Application.HasUserAuthorization(UserAuthorization.Microphone);
 #else
-            await Task.Yield();
+            await Task.CompletedTask.WithCancellation(cancellationToken);
             return true;
 #endif
         }
@@ -269,7 +289,7 @@ namespace Utilities.Audio
 
             if (result > 0)
             {
-                Debug.LogError("An error occurred when attempting to stop recording!");
+                Debug.LogError($"An error occurred when attempting to stop recording! Code: {result}");
             }
 
             currentClip = null;

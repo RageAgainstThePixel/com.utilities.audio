@@ -189,6 +189,14 @@ namespace Utilities.Audio
                 return null;
             }
 
+            var hasRecordingPermission = await Microphone.RequestRecordingPermissionsAsync(cancellationToken);
+
+            if (!hasRecordingPermission)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] Microphone permissions denied!");
+                return null;
+            }
+
             lock (recordingLock)
             {
                 isRecording = true;
@@ -315,6 +323,14 @@ namespace Utilities.Audio
             if (IsBusy)
             {
                 Debug.LogWarning($"[{nameof(RecordingManager)}] Recording already in progress!");
+                return;
+            }
+
+            var hasRecordingPermission = await Microphone.RequestRecordingPermissionsAsync(cancellationToken);
+
+            if (!hasRecordingPermission)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] Microphone permissions denied!");
                 return;
             }
 
