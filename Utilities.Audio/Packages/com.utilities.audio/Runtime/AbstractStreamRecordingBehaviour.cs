@@ -122,7 +122,9 @@ namespace Utilities.Audio
         {
             // Enable debugging
             RecordingManager.EnableDebug = debug;
+#if PLATFORM_WEBGL
             AudioPlaybackLoop();
+#endif
         }
 
         private void Update()
