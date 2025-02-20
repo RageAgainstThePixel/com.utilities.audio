@@ -6,25 +6,33 @@ var UnityMicrophoneLibrary = {
   /**
    * Initializes the Microphone context. Will alert the user if the browser does not support recording.
    * Sets up an interval to check the audio context state and resume it if it is suspended or interrupted.
-   * @param {number} onEnumerateDevicesPtr The pointer to the enumerate devices callback.
+   * @param {number} onEnumerateDevicesPtr The pointer to the onEnumerateDevices function callback.
+   * @param {number} onPermissionGrantedPtr The pointer to the permission granted callback.
+   * @param {number} onPermissionDeniedPtr The pointer to the permission denied callback.
    * @returns {number} The status code. 0 if successful, 1 if an error occurred, 2 if the browser does not support recording.
    */
-  Microphone_Init: function (onEnumerateDevicesPtr) {
+  Microphone_Init: function (onEnumerateDevicesPtr, onPermissionGrantedPtr, onPermissionDeniedPtr) {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices || !navigator.mediaDevices.getUserMedia) {
         alert('UnityMicrophoneLibrary is not supported in this browser!');
         return 2;
       }
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(_ => {
-        // console.log("UnityMicrophoneLibrary permissions granted!");
-        queryAudioDevices(onEnumerateDevicesPtr);
-
-        navigator.mediaDevices.ondevicechange = (_) => {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(_ => {
+          // console.log("UnityMicrophoneLibrary permissions granted!");
           queryAudioDevices(onEnumerateDevicesPtr);
-        };
-      }).catch(error => {
-        console.error(error);
-      });
+          if (!navigator.mediaDevices.ondevicechange) {
+            navigator.mediaDevices.ondevicechange = (_) => {
+              queryAudioDevices(onEnumerateDevicesPtr);
+            };
+          }
+          Module.dynCall_v(onPermissionGrantedPtr);
+        }, reason => {
+          console.error(`UnityMicrophoneLibrary: permissions denied! ${reason}`);
+          Module.dynCall_v(onPermissionDeniedPtr);
+        }).catch(error => {
+          console.error(error);
+        });
       return 0;
     } catch (error) {
       console.error(error);
