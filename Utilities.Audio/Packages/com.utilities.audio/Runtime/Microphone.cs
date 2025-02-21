@@ -191,7 +191,6 @@ namespace Utilities.Audio
             {
                 callbacks.PermissionGranted += PermissionGranted;
                 callbacks.PermissionDenied += PermissionDenied;
-                callbacks.PermissionDeniedAndDontAskAgain += PermissionDenied;
                 UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Microphone, callbacks);
                 return await permissionTcs.Task.WithCancellation(cancellationToken);
             }
@@ -199,7 +198,6 @@ namespace Utilities.Audio
             {
                 callbacks.PermissionGranted -= PermissionGranted;
                 callbacks.PermissionDenied -= PermissionDenied;
-                callbacks.PermissionDeniedAndDontAskAgain -= PermissionDenied;
             }
 #elif PLATFORM_IOS
             if (Application.HasUserAuthorization(UserAuthorization.Microphone))

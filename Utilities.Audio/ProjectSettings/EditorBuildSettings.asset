@@ -9,6 +9,6 @@ EditorBuildSettings:
     path: Assets/Samples/PCMRecording/MicrophonePCMRecroding.unity
     guid: 4176ed16fb3f4d540ac1c6075fdddf13
   - enabled: 1
-    path: Assets/Samples/PCMStreamRecording/MicrophonePCMRecrodingStreaming.unity
+    path: Assets/Samples/PCMRecording/MicrophonePCMRecrodingStreaming.unity
     guid: 485cdd2a1e13fb043beb4ec9766bd93d
   m_configObjects: {}
