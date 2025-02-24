@@ -212,13 +212,13 @@ namespace Utilities.Audio
                 DefaultRecordingDevice = null;
             }
 
+            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
+
             if (Microphone.devices.Length == 0)
             {
                 Debug.LogError($"[{nameof(RecordingManager)}] No devices found to record from!");
                 return null;
             }
-
-            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
 
             if (EnableDebug)
             {
@@ -344,13 +344,13 @@ namespace Utilities.Audio
                 DefaultRecordingDevice = null;
             }
 
+            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
+
             if (Microphone.devices.Length == 0)
             {
                 Debug.LogError($"[{nameof(RecordingManager)}] No devices found to record from!");
                 return;
             }
-
-            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
 
             if (EnableDebug)
             {
