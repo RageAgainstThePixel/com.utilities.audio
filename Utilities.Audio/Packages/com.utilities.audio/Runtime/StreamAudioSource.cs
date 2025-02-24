@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -56,13 +58,21 @@ namespace Utilities.Audio
         [Preserve]
         private async void AudioPlaybackLoop()
         {
+            //Debug.Log($"Start {nameof(AudioPlaybackLoop)}");
             var audioContextPtr = AudioStream_InitPlayback(AudioSettings.outputSampleRate);
-            var buffer = new float[AudioSettings.outputSampleRate];
 
             try
             {
+                if (audioContextPtr == IntPtr.Zero)
+                {
+                    throw new Exception("Failed to initialize a new audio context!");
+                }
+
+                var buffer = new float[AudioSettings.outputSampleRate];
+
                 while (!destroyCancellationToken.IsCancellationRequested)
                 {
+                    //Debug.Log($"AudioStream_SetVolume::volume:{audioSource.volume}");
                     AudioStream_SetVolume(audioContextPtr, audioSource.volume);
 
                     if (audioBuffer.Count >= buffer.Length)
@@ -82,6 +92,7 @@ namespace Utilities.Audio
                             }
                         }
 
+                        //Debug.Log($"AudioStream_AppendBufferPlayback::bufferLength:{bufferLength}");
                         AudioStream_AppendBufferPlayback(audioContextPtr, buffer, bufferLength);
                     }
 
@@ -95,6 +106,7 @@ namespace Utilities.Audio
             finally
             {
                 AudioStream_Dispose(audioContextPtr);
+                audioContextPtr = IntPtr.Zero;
             }
         }
 #else
@@ -123,9 +135,13 @@ namespace Utilities.Audio
 #endif
 
         [Preserve]
-        public async Task BufferCallback(float[] bufferCallback)
+        public async void BufferCallback(float[] samples)
+            => await BufferCallbackAsync(samples).ConfigureAwait(false);
+
+        [Preserve]
+        public async Task BufferCallbackAsync(float[] samples)
         {
-            foreach (var sample in bufferCallback)
+            foreach (var sample in samples)
             {
                 audioBuffer.Enqueue(sample);
             }
@@ -134,7 +150,7 @@ namespace Utilities.Audio
         }
 
         [Preserve]
-        public async Task BufferCallback(ReadOnlyMemory<byte> audioData, int inputSampleRate, int outputSampleRate)
+        public async Task BufferCallbackAsync(ReadOnlyMemory<byte> audioData, int inputSampleRate, int outputSampleRate)
         {
             var samples = PCMEncoder.Decode(audioData.ToArray(), inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate);
 

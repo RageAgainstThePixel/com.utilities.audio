@@ -84,7 +84,7 @@ namespace Utilities.Audio
                         // ReSharper disable once MethodHasAsyncOverload
                         RecordingManager.StartRecordingStream<PCMEncoder>(async audioData =>
                         {
-                            await streamAudioSource.BufferCallback(audioData, recordingSampleRate, playbackSampleRate);
+                            await streamAudioSource.BufferCallbackAsync(audioData, recordingSampleRate, playbackSampleRate);
                         }, recordingSampleRate, destroyCancellationToken);
                     }
                 }

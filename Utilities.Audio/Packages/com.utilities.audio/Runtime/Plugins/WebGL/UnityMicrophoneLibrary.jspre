@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 /**
  * Initializes the dynCall_* function table lookups.
  * Thanks to De-Panther for the following code.
