@@ -10,23 +10,33 @@ var UnityAudioLibrary = {
   /**
    * Initializes the audio playback context.
    * This is used in place of missing OnAudioFilterRead in Unity.
+   * @param {number} playbackSampleRate The sample rate of the audio playback context.
    * @returns A pointer to the audio playback context.
    */
-  InitAudioStreamPlayback: function () {
+  InitAudioStreamPlayback: function (playbackSampleRate) {
     try {
       if (!("MediaSource" in window)) {
         throw new Error('MediaSource is not supported in this browser!');
       }
       const mediaSource = new MediaSource();
+      const audioContext = new AudioContext({ sampleRate: playbackSampleRate });
       const audio = new Audio();
+      const source = audioContext.createMediaElementSource(audio);
+      source.connect(audioContext.destination);
       const audioPtr = ++ptrIndex;
       audioPtrs[audioPtr] = {
         appendQueue: [],
         audio: audio,
         mediaSource: mediaSource,
+        audioContext: audioContext,
+        updateInterval: null
       };
       audio.src = URL.createObjectURL(mediaSource);
-      audio.play();
+      audioContext.resume().then(() => {
+        audio.play();
+      }).catch((error) => {
+        console.error(`Audio playback failed to start: ${error}`);
+      });
       mediaSource.addEventListener('sourceopen', function () {
         try {
           const sourceBuffer = mediaSource.addSourceBuffer('audio/wav');
@@ -57,7 +67,7 @@ var UnityAudioLibrary = {
   /**
    * Appends the audio buffer to the audio playback context.
    * @param {number} audioPtr The pointer to the audio playback context.
-   * @param {number} bufferPtr The pointer to the audio buffer.
+   * @param {number} bufferPtr The pointer to the audio buffer. This buffer is an array of floats.
    * @param {number} bufferLength The length of the audio buffer.
    * @returns {number} The status code. 0 if successful, 1 if an error occurred.
    */
@@ -67,7 +77,7 @@ var UnityAudioLibrary = {
       if (instance == null) {
         throw new Error(`Audio context with pointer ${audioPtr} not found.`);
       }
-      const buffer = new Uint8Array(Module.HEAPU8.buffer, bufferPtr, bufferLength);
+      const buffer = new Float32Array(Module.HEAPF32.buffer, bufferPtr, bufferLength);
       instance.appendQueue.push(buffer);
       return 0;
     } catch (error) {
@@ -106,6 +116,8 @@ var UnityAudioLibrary = {
         instance.audio.pause();
         URL.revokeObjectURL(instance.audio.src);
         instance.audio = null;
+        instance.audioContext.close();
+        instance.audioContext = null;
         instance.mediaSource.endOfStream();
         instance.mediaSource = null;
       } finally {

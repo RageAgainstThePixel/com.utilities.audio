@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,10 +41,10 @@ namespace Utilities.Audio
         private static extern IntPtr InitAudioStreamPlayback(int playbackSampleRate);
 
         [DllImport("__Internal")]
-        private static extern void AppendPlaybackBuffer(IntPtr audioContextPtr, byte[] buffer, int length);
+        private static extern int AppendPlaybackBuffer(IntPtr audioContextPtr, float[] buffer, int length);
 
         [DllImport("__Internal")]
-        private static extern void SetVolume(IntPtr audioContextPtr, float volume);
+        private static extern int SetVolume(IntPtr audioContextPtr, float volume);
 
         [DllImport("__Internal")]
         private static extern IntPtr Dispose(IntPtr audioContextPtr);
@@ -51,12 +52,34 @@ namespace Utilities.Audio
         private async void AudioPlaybackLoop()
         {
             var audioContextPtr = InitAudioStreamPlayback(AudioSettings.outputSampleRate);
+            var buffer = new float[AudioSettings.outputSampleRate];
 
             try
             {
                 while (!destroyCancellationToken.IsCancellationRequested)
                 {
                     SetVolume(audioContextPtr, audioSource.volume);
+
+                    if (!audioBuffer.IsEmpty)
+                    {
+                        var bufferLength = 0;
+
+                        for (int i = 0; i < buffer.Length; i++)
+                        {
+                            if (audioBuffer.TryDequeue(out var sample))
+                            {
+                                buffer[i] = sample;
+                                bufferLength++;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+
+                        AppendPlaybackBuffer(audioContextPtr, buffer, bufferLength);
+                    }
+
                     await Task.Yield();
                 }
             }
@@ -67,10 +90,7 @@ namespace Utilities.Audio
             finally
             {
 
-                if (audioContextPtr != IntPtr.Zero)
-                {
-                    Dispose(audioContextPtr);
-                }
+                Dispose(audioContextPtr);
             }
         }
 #else
