@@ -15,49 +15,57 @@ var UnityAudioLibrary = {
    */
   AudioStream_InitPlayback: function (playbackSampleRate) {
     try {
-      if (!("MediaSource" in window)) {
-        throw new Error('MediaSource is not supported in this browser!');
-      }
-      const mediaSource = new MediaSource();
-      const audioContext = new AudioContext({ sampleRate: playbackSampleRate });
-      const audio = new Audio();
-      const source = audioContext.createMediaElementSource(audio);
-      source.connect(audioContext.destination);
       const audioPtr = ++ptrIndex;
-      audioPtrs[audioPtr] = {
-        appendQueue: [],
-        audio: audio,
-        mediaSource: mediaSource,
-        audioContext: audioContext,
-        updateInterval: null
-      };
-      audio.src = URL.createObjectURL(mediaSource);
-      audioContext.resume().then(() => {
-        audio.play();
-      }).catch((error) => {
-        console.error(`Audio playback failed to start: ${error}`);
-      });
-      mediaSource.addEventListener('sourceopen', function () {
+      const AudioContext = window.AudioContext;// || window.webkitAudioContext;
+      const audioContext = new AudioContext({ sampleRate: playbackSampleRate });
+      const gain = audioContext.createGain();
+      gain.connect(audioContext.destination);
+      function processAudio() {
         try {
-          const sourceBuffer = mediaSource.addSourceBuffer('audio/wav');
-          sourceBuffer.mode = 'sequence';
-          audioPtrs[audioPtr].updateInterval = setInterval(() => {
-            try {
-              const instance = audioPtrs[audioPtr];
-              if (instance == null) {
-                throw new Error(`audio context pointer ${audioPtr} not found!`);
-              }
-              if (instance.appendQueue.length > 0 && !sourceBuffer.updating) {
-                sourceBuffer.appendBuffer(instance.appendQueue.shift());
-              }
-            } catch (error) {
-              console.error(error);
+          const instance = audioPtrs[audioPtr];
+          if (instance == null) {
+            throw new Error(`Audio context with pointer ${audioPtr} not found.`);
+          }
+          if (instance.chunkQueue.length === 0) {
+            if (instance.playbackInterval === 0) {
+              instance.playbackInterval = setTimeout(processAudio, 50);
             }
-          }, 50);
+            return;
+          }
+          clearTimeout(instance.playbackInterval);
+          const chunkCount = Math.min(5, instance.chunkQueue.length);
+          const maxDuration = chunkCount * playbackSampleRate;
+          const audioBuffer = audioContext.createBuffer(1, maxDuration, playbackSampleRate);
+          let bufferPosition = 0;
+          for (let i = 0; i < chunkCount; i++) {
+            const nextChunk = instance.chunkQueue.shift();
+            audioBuffer.copyToChannel(nextChunk, bufferPosition);
+            bufferPosition += nextChunk.length;
+          }
+          const duration = bufferPosition / playbackSampleRate;
+          if (instance.activeSource != null) {
+            instance.activeSource.stop();
+            instance.activeSource.disconnect();
+            instance.activeSource = null;
+          }
+          const activeSource = audioContext.createBufferSource();
+          activeSource.buffer = audioBuffer;
+          activeSource.connect(gain);
+          activeSource.onended = processAudio;
+          activeSource.start({ duration: duration });
+          instance.activeSource = activeSource;
         } catch (error) {
           console.error(error);
         }
-      });
+      }
+      const playbackInterval = setTimeout(processAudio, 50);
+      audioPtrs[audioPtr] = {
+        chunkQueue: [], // as Float32Array[]
+        audioContext: audioContext,
+        gain: gain,
+        activeSource: null,
+        playbackInterval: playbackInterval,
+      };
       return audioPtr;
     } catch (error) {
       console.error(error);
@@ -67,7 +75,7 @@ var UnityAudioLibrary = {
   /**
    * Appends the audio buffer to the audio playback context.
    * @param {number} audioPtr The pointer to the audio playback context.
-   * @param {number} bufferPtr The pointer to the audio buffer. This buffer is an array of floats.
+   * @param {number} bufferPtr The pointer to the audio buffer. This buffer is an array of pcm-s16 floats.
    * @param {number} bufferLength The length of the audio buffer.
    * @returns {number} The status code. 0 if successful, 1 if an error occurred.
    */
@@ -77,8 +85,8 @@ var UnityAudioLibrary = {
       if (instance == null) {
         throw new Error(`Audio context with pointer ${audioPtr} not found.`);
       }
-      const buffer = new Float32Array(Module.HEAPF32.buffer, bufferPtr, bufferLength);
-      instance.appendQueue.push(buffer);
+      const chunk = new Float32Array(Module.HEAPF32.buffer, bufferPtr, bufferLength);
+      instance.chunkQueue.push(chunk);
       return 0;
     } catch (error) {
       console.error(error);
@@ -97,13 +105,17 @@ var UnityAudioLibrary = {
       if (instance == null) {
         throw new Error(`Audio context with pointer ${audioPtr} not found.`);
       }
-      instance.audio.volume = volume;
+      instance.gain.gain.value = volume;
       return 0;
     } catch (error) {
       console.error(error);
       return 1;
     }
   },
+  /**
+   * Disposes the audio playback context.
+   * @param {number} audioPtr The pointer to the audio playback context.
+   */
   AudioStream_Dispose: function (audioPtr) {
     try {
       if (audioPtr === 0) { return; }
@@ -112,14 +124,16 @@ var UnityAudioLibrary = {
         throw new Error(`Audio context with pointer ${audioPtr} not found.`);
       }
       try {
-        clearInterval(instance.updateInterval);
-        instance.audio.pause();
-        URL.revokeObjectURL(instance.audio.src);
-        instance.audio = null;
+        clearInterval(instance.playbackInterval);
+        if (instance.activeSource != null) {
+          instance.activeSource.stop();
+          instance.activeSource.disconnect();
+          instance.activeSource = null;
+        }
+        instance.gain.disconnect();
+        instance.gain = null;
         instance.audioContext.close();
         instance.audioContext = null;
-        instance.mediaSource.endOfStream();
-        instance.mediaSource = null;
       } finally {
         delete audioPtrs[audioPtr];
       }
