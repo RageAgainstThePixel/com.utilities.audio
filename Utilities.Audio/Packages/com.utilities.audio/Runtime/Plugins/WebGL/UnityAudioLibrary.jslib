@@ -16,13 +16,14 @@ var UnityAudioLibrary = {
   AudioStream_InitPlayback: function (playbackSampleRate) {
     try {
       const audioPtr = ++ptrIndex;
-      const AudioContext = window.AudioContext;// || window.webkitAudioContext;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
       const audioContext = new AudioContext({ sampleRate: playbackSampleRate });
       const gain = audioContext.createGain();
       gain.connect(audioContext.destination);
       function processAudio() {
         try {
           const instance = audioPtrs[audioPtr];
+          console.log(`Processing audio for pointer ${audioPtr}.`);
           if (instance == null) {
             throw new Error(`Audio context with pointer ${audioPtr} not found.`);
           }
@@ -35,6 +36,7 @@ var UnityAudioLibrary = {
           clearTimeout(instance.playbackInterval);
           const chunkCount = Math.min(5, instance.chunkQueue.length);
           const maxDuration = chunkCount * playbackSampleRate;
+          console.log(`Processing ${chunkCount} chunks for ${maxDuration} samples.`);
           const audioBuffer = audioContext.createBuffer(1, maxDuration, playbackSampleRate);
           let bufferPosition = 0;
           for (let i = 0; i < chunkCount; i++) {
@@ -44,6 +46,7 @@ var UnityAudioLibrary = {
           }
           const duration = bufferPosition / playbackSampleRate;
           if (instance.activeSource != null) {
+            console.log('Stopping active source.');
             instance.activeSource.stop();
             instance.activeSource.disconnect();
             instance.activeSource = null;
@@ -53,6 +56,7 @@ var UnityAudioLibrary = {
           activeSource.connect(gain);
           activeSource.onended = processAudio;
           activeSource.start({ duration: duration });
+          console.log(`Playing audio for ${duration} seconds.`);
           instance.activeSource = activeSource;
         } catch (error) {
           console.error(error);
@@ -106,6 +110,7 @@ var UnityAudioLibrary = {
         throw new Error(`Audio context with pointer ${audioPtr} not found.`);
       }
       instance.gain.gain.value = volume;
+      console.log(`Set volume to ${volume}`);
       return 0;
     } catch (error) {
       console.error(error);
@@ -124,6 +129,7 @@ var UnityAudioLibrary = {
         throw new Error(`Audio context with pointer ${audioPtr} not found.`);
       }
       try {
+        console.log(`Disposing audio context with pointer ${audioPtr}.`);
         clearInterval(instance.playbackInterval);
         if (instance.activeSource != null) {
           instance.activeSource.stop();
