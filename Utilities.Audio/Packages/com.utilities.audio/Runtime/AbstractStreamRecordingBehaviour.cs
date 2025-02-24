@@ -1,9 +1,5 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
-using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Utilities.Audio
@@ -12,11 +8,11 @@ namespace Utilities.Audio
     /// A simple implementation of a recording behaviour.
     /// </summary>
     /// <typeparam name="TEncoder"><see cref="IEncoder"/> to use for recording.</typeparam>
-    [RequireComponent(typeof(AudioSource))]
+    [RequireComponent(typeof(StreamAudioSource))]
     public abstract class AbstractStreamRecordingBehaviour<TEncoder> : MonoBehaviour where TEncoder : IEncoder
     {
         [SerializeField]
-        private AudioSource audioSource;
+        private StreamAudioSource streamAudioSource;
 
         [SerializeField]
         private KeyCode recordingKey = KeyCode.Space;
@@ -44,87 +40,24 @@ namespace Utilities.Audio
         }
 
 #if !UNITY_2022_1_OR_NEWER
-        private CancellationTokenSource lifetimeCancellationTokenSource = new();
+        private System.Threading.CancellationTokenSource lifetimeCancellationTokenSource = new();
         // ReSharper disable once InconsistentNaming
-        private CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
-#endif
-
-#if PLATFORM_WEBGL
-        private readonly ConcurrentQueue<AudioClip> audioQueue = new();
-#else
-        private readonly ConcurrentQueue<float> audioQueue = new();
+        private System.Threading.CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
 #endif
 
         private void OnValidate()
         {
-            if (audioSource == null)
+            if (streamAudioSource == null)
             {
-                audioSource = GetComponent<AudioSource>();
+                streamAudioSource = GetComponent<StreamAudioSource>();
             }
         }
 
-#if PLATFORM_WEBGL
-        private async void AudioPlaybackLoop()
+        private void Awake()
         {
-            try
-            {
-                do
-                {
-                    if (!audioSource.isPlaying &&
-                        audioQueue.TryDequeue(out var clip))
-                    {
-                        try
-                        {
-                            UnityEngine.Debug.Log($"playing partial clip: {clip.name} | ({audioQueue.Count} remaining)");
-                            audioSource.PlayOneShot(clip);
-                            // ReSharper disable once MethodSupportsCancellation
-                            await Task.Delay(TimeSpan.FromSeconds(clip.length)).ConfigureAwait(true);
-                        }
-                        finally
-                        {
-                            Destroy(clip);
-                        }
-                    }
-                    else
-                    {
-                        await Task.Yield();
-                    }
-                } while (!destroyCancellationToken.IsCancellationRequested);
-            }
-            catch (Exception e)
-            {
-                UnityEngine.Debug.LogException(e);
-                // restart playback loop
-                AudioPlaybackLoop();
-            }
-        }
-#else
-        private void OnAudioFilterRead(float[] data, int channels)
-        {
-            if (audioQueue.Count < data.Length) { return; }
-
-            for (var i = 0; i < data.Length; i += channels)
-            {
-                if (audioQueue.TryDequeue(out var sample))
-                {
-                    for (var j = 0; j < channels; j++)
-                    {
-                        data[i + j] = sample;
-                    }
-                }
-            }
-        }
-#endif
-
-        private void Awake() => OnValidate();
-
-        private void Start()
-        {
+            OnValidate();
             // Enable debugging
             RecordingManager.EnableDebug = debug;
-#if PLATFORM_WEBGL
-            AudioPlaybackLoop();
-#endif
         }
 
         private void Update()
@@ -149,26 +82,10 @@ namespace Utilities.Audio
                         }
 
                         // ReSharper disable once MethodHasAsyncOverload
-                        RecordingManager.StartRecordingStream<PCMEncoder>(BufferCallback, recordingSampleRate, destroyCancellationToken);
-
-                        async Task BufferCallback(ReadOnlyMemory<byte> bufferCallback)
+                        RecordingManager.StartRecordingStream<PCMEncoder>(async audioData =>
                         {
-                            // we need to resample the audio to match the playback sample rate of OnAudioFilterRead
-                            // which should be the same as AudioSettings.outputSampleRate
-                            var samples = PCMEncoder.Decode(bufferCallback.ToArray(), inputSampleRate: recordingSampleRate, outputSampleRate: playbackSampleRate);
-#if PLATFORM_WEBGL
-                            var clip = AudioClip.Create("microphone_recording", samples.Length, 1, AudioSettings.outputSampleRate, false);
-                            clip.SetData(samples, 0);
-                            audioQueue.Enqueue(clip);
-#else
-                            foreach (var sample in samples)
-                            {
-                                audioQueue.Enqueue(sample);
-                            }
-#endif
-
-                            await Task.Yield();
-                        }
+                            await streamAudioSource.BufferCallback(audioData, recordingSampleRate, playbackSampleRate);
+                        }, recordingSampleRate, destroyCancellationToken);
                     }
                 }
             }
