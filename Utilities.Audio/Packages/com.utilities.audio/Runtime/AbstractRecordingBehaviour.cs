@@ -22,6 +22,12 @@ namespace Utilities.Audio
         [SerializeField]
         private bool debug;
 
+        public bool Debug
+        {
+            get => debug;
+            set => debug = value;
+        }
+
         [SerializeField]
         private SampleRates sampleRate = SampleRates.Hz44100;
 
@@ -33,12 +39,6 @@ namespace Utilities.Audio
             Hz44100 = 44100,
             Hz48000 = 48000,
             Hz96000 = 96000
-        }
-
-        public bool Debug
-        {
-            get => debug;
-            set => debug = value;
         }
 
         public string DefaultSaveLocation

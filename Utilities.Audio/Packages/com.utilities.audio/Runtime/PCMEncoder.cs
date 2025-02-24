@@ -13,8 +13,6 @@ namespace Utilities.Audio
 {
     public class PCMEncoder : IEncoder
     {
-        private const int HammingWindowFilterLength = 32;
-
         internal static readonly ISampleProvider DefaultSampleProvider = new UnitySampleProvider();
 
         /// <summary>

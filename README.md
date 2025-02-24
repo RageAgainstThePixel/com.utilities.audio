@@ -12,6 +12,14 @@ The recommended installation method is though the unity package manager and [Ope
 
 ### Via Unity Package Manager and OpenUPM
 
+#### Terminal
+
+```terminal
+openupm add com.utilities.audio
+```
+
+#### Manual
+
 - Open your Unity project settings
 - Select the `Package Manager`
 ![scoped-registries](Utilities.Audio/Packages/com.utilities.audio/Documentation~/images/package-manager-scopes.png)
@@ -26,9 +34,11 @@ The recommended installation method is though the unity package manager and [Ope
 
 ### Via Unity Package Manager and Git url
 
+> [!WARNING]
+> This repo has dependencies on other repositories! You are responsible for adding these on your own.
+
 - Open your Unity Package Manager
 - Add package from git url: `https://github.com/RageAgainstThePixel/com.utilities.audio.git#upm`
-  > Note: this repo has dependencies on other repositories! You are responsible for adding these on your own.
   - [com.utilities.async](https://github.com/RageAgainstThePixel/com.utilities.async)
 
 ## Documentation
@@ -42,6 +52,7 @@ On its own this package doesn't do too much but provide base functionality for r
   - [Steam Save To Disk](#start-recording-while-streaming-to-disk)
   - [Stream Callback](#start-recording-and-callback-each-sample)
 - [Recording Behaviour](#recording-behaviour)
+- [Audio Streaming Behaviour](#audio-streaming-behaviour)
 - [Audio Clip Extensions](#audio-clip-extensions)
   - [Encode PCM](#encode-pcm)
   - [Decode PCM](#decode-pcm)
@@ -76,6 +87,15 @@ await RecordingManager.StartRecordingStreamAsync<PCMEncoder>(sample => stream.Wr
 A basic `PCMRecordingBehaviour` is included in this package to enable basic recording to any project. Simply add this component to any GameObject in your scene. This class inherits from `AbstractRecordingBehaviour<TEncoder>`.
 
 `AbstractRecordingBehaviour<TEncoder>` is really meant to be a good baseline example of how to use the `RecordingManager`. This abstract class is implemented in each of the [encoder packages](#encoder-packages) for simplicity and ease of use. You can use this class as an example of how to implement your own recording behaviours.
+
+## Audio Streaming Behaviour
+
+A `AudioStreamingSource` is included in this package to enable basic audio streaming to any project. Simply add this component to any GameObject in your scene.
+
+This component was designed to streamline platform support for WebGL since it doesn't support `OnAudioFilterRead` API. On platforms that support it, it will use the `OnAudioFilterRead` API to stream audio data. On WebGL, it will stream the data directly to an instanced `AudioContext` object for you.
+
+> [!NOTE]
+> Volume control is provided by the `AudioSource` component, so updating the volume on the AudioSource as normal, will also update the volume of the `AudioContext` in WebGL.
 
 ## Audio Clip Extensions
 

@@ -1,9 +1,5 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
-using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Utilities.Audio
@@ -12,11 +8,11 @@ namespace Utilities.Audio
     /// A simple implementation of a recording behaviour.
     /// </summary>
     /// <typeparam name="TEncoder"><see cref="IEncoder"/> to use for recording.</typeparam>
-    [RequireComponent(typeof(AudioSource))]
+    [RequireComponent(typeof(StreamAudioSource))]
     public abstract class AbstractStreamRecordingBehaviour<TEncoder> : MonoBehaviour where TEncoder : IEncoder
     {
         [SerializeField]
-        private AudioSource audioSource;
+        private StreamAudioSource streamAudioSource;
 
         [SerializeField]
         private KeyCode recordingKey = KeyCode.Space;
@@ -44,41 +40,22 @@ namespace Utilities.Audio
         }
 
 #if !UNITY_2022_1_OR_NEWER
-        private CancellationTokenSource lifetimeCancellationTokenSource = new();
+        private System.Threading.CancellationTokenSource lifetimeCancellationTokenSource = new();
         // ReSharper disable once InconsistentNaming
-        private CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
+        private System.Threading.CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
 #endif
-
-        private readonly ConcurrentQueue<float> sampleQueue = new();
 
         private void OnValidate()
         {
-            if (audioSource == null)
+            if (streamAudioSource == null)
             {
-                audioSource = GetComponent<AudioSource>();
+                streamAudioSource = GetComponent<StreamAudioSource>();
             }
         }
 
-        private void OnAudioFilterRead(float[] data, int channels)
+        private void Awake()
         {
-            if (sampleQueue.Count < data.Length) { return; }
-
-            for (var i = 0; i < data.Length; i += channels)
-            {
-                if (sampleQueue.TryDequeue(out var sample))
-                {
-                    for (var j = 0; j < channels; j++)
-                    {
-                        data[i + j] = sample;
-                    }
-                }
-            }
-        }
-
-        private void Awake() => OnValidate();
-
-        private void Start()
-        {
+            OnValidate();
             // Enable debugging
             RecordingManager.EnableDebug = debug;
         }
@@ -105,21 +82,10 @@ namespace Utilities.Audio
                         }
 
                         // ReSharper disable once MethodHasAsyncOverload
-                        RecordingManager.StartRecordingStream<PCMEncoder>(BufferCallback, recordingSampleRate, destroyCancellationToken);
-
-                        async Task BufferCallback(ReadOnlyMemory<byte> bufferCallback)
+                        RecordingManager.StartRecordingStream<PCMEncoder>(async audioData =>
                         {
-                            // we need to resample the audio to match the playback sample rate of OnAudioFilterRead
-                            // which should be the same as AudioSettings.outputSampleRate
-                            var samples = PCMEncoder.Decode(bufferCallback.ToArray(), inputSampleRate: recordingSampleRate, outputSampleRate: playbackSampleRate);
-
-                            foreach (var sample in samples)
-                            {
-                                sampleQueue.Enqueue(sample);
-                            }
-
-                            await Task.Yield();
-                        }
+                            await streamAudioSource.BufferCallbackAsync(audioData, recordingSampleRate, playbackSampleRate);
+                        }, recordingSampleRate, destroyCancellationToken);
                     }
                 }
             }

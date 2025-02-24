@@ -1,3 +1,5 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 /**
  * Initializes the dynCall_* function table lookups.
  * Thanks to De-Panther for the following code.
@@ -23,7 +25,6 @@ function queryAudioDevices(onEnumerateDevicesPtr) {
     console.error("browser not supported.");
     return;
   }
-  microphoneDevices = [];
   navigator.mediaDevices.enumerateDevices().then((devices) => {
     devices.forEach((device) => {
       if (device.kind === 'audioinput') {
@@ -39,12 +40,12 @@ function queryAudioDevices(onEnumerateDevicesPtr) {
           console.warn(`Failed to get capabilities for device: ${device.label}`);
         }
         var microphone = { name: device.label, device: device, isRecording: false, position: 0, maxFrequency, minFrequency };
-        console.log(microphone);
         for (var i = 0; i < microphoneDevices.length; i++) {
           if (microphoneDevices[i].device.deviceId === microphone.device.deviceId) {
             return;
           }
         }
+        console.log(microphone);
         microphoneDevices.push(microphone);
       }
     });
@@ -64,6 +65,10 @@ function getMicrophoneDevice(deviceName) {
       if (microphoneDevices[i].device.deviceId === "default") {
         return microphoneDevices[i];
       }
+    }
+    // fallback to the first device found
+    if (microphoneDevices.length > 0) {
+      return microphoneDevices[0];
     }
   } else {
     for (var i = 0; i < microphoneDevices.length; i++) {
@@ -90,12 +95,14 @@ function createWorkletProcessorURL() {
             // Handle messages from the main script if needed
         }
         process(inputs, outputs, parameters) {
-            const input = inputs[0];
-            if (input.length > 0) {
-                const inputData = input[0];
+            if (inputs.length > 0){
+              const inputChannel = inputs[0];
+              if (inputChannel.length > 0) {
+                const inputData = inputChannel[0];
                 const bufferLength = inputData.length;
-                // Transfer data to the main thread
+                // Transfer audio data to the main thread
                 this.port.postMessage({ data: inputData, bufferLength: bufferLength });
+              }
             }
             return true;
         }
