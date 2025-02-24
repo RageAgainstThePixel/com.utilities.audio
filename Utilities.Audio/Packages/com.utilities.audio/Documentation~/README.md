@@ -12,6 +12,14 @@ The recommended installation method is though the unity package manager and [Ope
 
 ### Via Unity Package Manager and OpenUPM
 
+#### Terminal
+
+```terminal
+openupm add com.utilities.audio
+```
+
+#### Manual
+
 - Open your Unity project settings
 - Select the `Package Manager`
 ![scoped-registries](images/package-manager-scopes.png)
