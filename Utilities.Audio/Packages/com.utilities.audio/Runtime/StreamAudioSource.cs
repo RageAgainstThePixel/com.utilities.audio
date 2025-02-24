@@ -15,6 +15,9 @@ namespace Utilities.Audio
     [RequireComponent(typeof(AudioSource))]
     public class StreamAudioSource : MonoBehaviour
     {
+        public static implicit operator AudioSource(StreamAudioSource streamAudioSource)
+            => streamAudioSource.audioSource;
+
         [SerializeField]
         private AudioSource audioSource;
 
@@ -25,6 +28,8 @@ namespace Utilities.Audio
 #endif
 
         private readonly ConcurrentQueue<float> audioBuffer = new();
+
+        public bool IsEmpty => audioBuffer.IsEmpty;
 
         private void OnValidate()
         {
