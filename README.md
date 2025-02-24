@@ -26,7 +26,7 @@ The recommended installation method is though the unity package manager and [Ope
 
 ### Via Unity Package Manager and Git url
 
-> [!NOTE]
+> [!WARNING]
 > This repo has dependencies on other repositories! You are responsible for adding these on your own.
 
 - Open your Unity Package Manager
