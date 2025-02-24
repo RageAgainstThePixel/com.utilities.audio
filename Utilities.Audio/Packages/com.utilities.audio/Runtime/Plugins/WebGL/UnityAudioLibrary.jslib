@@ -13,7 +13,7 @@ var UnityAudioLibrary = {
    * @param {number} playbackSampleRate The sample rate of the audio playback context.
    * @returns A pointer to the audio playback context.
    */
-  InitAudioStreamPlayback: function (playbackSampleRate) {
+  AudioStream_InitPlayback: function (playbackSampleRate) {
     try {
       if (!("MediaSource" in window)) {
         throw new Error('MediaSource is not supported in this browser!');
@@ -71,7 +71,7 @@ var UnityAudioLibrary = {
    * @param {number} bufferLength The length of the audio buffer.
    * @returns {number} The status code. 0 if successful, 1 if an error occurred.
    */
-  AppendBufferPlayback: function (audioPtr, bufferPtr, bufferLength) {
+  AudioStream_AppendBufferPlayback: function (audioPtr, bufferPtr, bufferLength) {
     try {
       const instance = audioPtrs[audioPtr];
       if (instance == null) {
@@ -91,7 +91,7 @@ var UnityAudioLibrary = {
    * @param {number} volume The volume to set.
    * @returns {number} The status code. 0 if successful, 1 if an error occurred.
    */
-  SetVolume: function (audioPtr, volume) {
+  AudioStream_SetVolume: function (audioPtr, volume) {
     try {
       const instance = audioPtrs[audioPtr];
       if (instance == null) {
@@ -104,7 +104,7 @@ var UnityAudioLibrary = {
       return 1;
     }
   },
-  Dispose: function (audioPtr) {
+  AudioStream_Dispose: function (audioPtr) {
     try {
       if (audioPtr === 0) { return; }
       const instance = audioPtrs[audioPtr];

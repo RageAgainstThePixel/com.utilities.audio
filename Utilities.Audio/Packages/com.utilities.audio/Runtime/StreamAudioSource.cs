@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Concurrent;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Scripting;
 
 namespace Utilities.Audio
 {
@@ -34,31 +33,37 @@ namespace Utilities.Audio
         }
 
         private void Awake()
-            => OnValidate();
+        {
+            OnValidate();
+#if PLATFORM_WEBGL && !UNITY_EDITOR
+            AudioPlaybackLoop();
+#endif // PLATFORM_WEBGL && !UNITY_EDITOR
+        }
 
-#if PLATFORM_WEBGL
-        [DllImport("__Internal")]
-        private static extern IntPtr InitAudioStreamPlayback(int playbackSampleRate);
+#if PLATFORM_WEBGL && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern IntPtr AudioStream_InitPlayback(int playbackSampleRate);
 
-        [DllImport("__Internal")]
-        private static extern int AppendPlaybackBuffer(IntPtr audioContextPtr, float[] buffer, int length);
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern int AudioStream_AppendBufferPlayback(IntPtr audioContextPtr, float[] buffer, int length);
 
-        [DllImport("__Internal")]
-        private static extern int SetVolume(IntPtr audioContextPtr, float volume);
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern int AudioStream_SetVolume(IntPtr audioContextPtr, float volume);
 
-        [DllImport("__Internal")]
-        private static extern IntPtr Dispose(IntPtr audioContextPtr);
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern IntPtr AudioStream_Dispose(IntPtr audioContextPtr);
 
+        [Preserve]
         private async void AudioPlaybackLoop()
         {
-            var audioContextPtr = InitAudioStreamPlayback(AudioSettings.outputSampleRate);
+            var audioContextPtr = AudioStream_InitPlayback(AudioSettings.outputSampleRate);
             var buffer = new float[AudioSettings.outputSampleRate];
 
             try
             {
                 while (!destroyCancellationToken.IsCancellationRequested)
                 {
-                    SetVolume(audioContextPtr, audioSource.volume);
+                    AudioStream_SetVolume(audioContextPtr, audioSource.volume);
 
                     if (!audioBuffer.IsEmpty)
                     {
@@ -77,7 +82,7 @@ namespace Utilities.Audio
                             }
                         }
 
-                        AppendPlaybackBuffer(audioContextPtr, buffer, bufferLength);
+                        AudioStream_AppendBufferPlayback(audioContextPtr, buffer, bufferLength);
                     }
 
                     await Task.Yield();
@@ -89,8 +94,7 @@ namespace Utilities.Audio
             }
             finally
             {
-
-                Dispose(audioContextPtr);
+                AudioStream_Dispose(audioContextPtr);
             }
         }
 #else
@@ -109,7 +113,7 @@ namespace Utilities.Audio
                 }
             }
         }
-#endif
+#endif // PLATFORM_WEBGL && !UNITY_EDITOR
 
 #if !UNITY_2022_1_OR_NEWER
         private void OnDestroy()
@@ -118,6 +122,7 @@ namespace Utilities.Audio
         }
 #endif
 
+        [Preserve]
         public async Task BufferCallback(float[] bufferCallback)
         {
             foreach (var sample in bufferCallback)
@@ -128,6 +133,7 @@ namespace Utilities.Audio
             await Task.Yield();
         }
 
+        [Preserve]
         public async Task BufferCallback(ReadOnlyMemory<byte> audioData, int inputSampleRate, int outputSampleRate)
         {
             var samples = PCMEncoder.Decode(audioData.ToArray(), inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate);
