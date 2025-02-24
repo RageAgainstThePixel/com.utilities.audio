@@ -1,9 +1,12 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
+using Utilities.Async;
 
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if PLATFORM_WEBGL && !UNITY_EDITOR
 using AOT;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,15 +20,31 @@ namespace Utilities.Audio
     /// </summary>
     public static class Microphone
     {
-#if UNITY_WEBGL && !UNITY_EDITOR
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
-        private static void Init() => Microphone_Init(Microphone_OnEnumerateDevices);
-
+#if PLATFORM_WEBGL && !UNITY_EDITOR
         #region Interop
 
-        [DllImport("__Internal")]
-        private static extern void Microphone_Init(Microphone_OnEnumerateDevicesDelegate onEnumerateDevices);
+        private const string k_NotInitialized = "The microphone permissions has not been granted by the user! Call RequestRecordingPermissionsAsync to request microphone access.";
 
+        private static bool permissionsGranted;
+        private static TaskCompletionSource<bool> permissionTcs;
+
+        private static void InitializeMicrophone()
+        {
+            var result = Microphone_Init(Microphone_OnEnumerateDevices, Microphone_OnPermissionGranted, Microphone_OnPermissionDenied);
+
+            switch (result)
+            {
+                case 2:
+                    Debug.LogError("UnityMicrophoneLibrary is not supported in this browser!");
+                    return;
+                case 1:
+                    Debug.LogError("An error occurred when attempting to initialize the microphone!");
+                    return;
+            }
+        }
+
+        [DllImport("__Internal")]
+        private static extern int Microphone_Init(Microphone_OnEnumerateDevicesDelegate onEnumerateDevices, Microphone_OnPermissionGrantedDelegate onPermissionGranted, Microphone_OnPermissionDeniedDelegate onPermissionDenied);
         private delegate void Microphone_OnEnumerateDevicesDelegate();
 
         [MonoPInvokeCallback(typeof(Microphone_OnEnumerateDevicesDelegate))]
@@ -44,6 +63,24 @@ namespace Utilities.Audio
             }
 
             deviceList = tempDeviceList.ToArray();
+        }
+
+        private delegate void Microphone_OnPermissionGrantedDelegate();
+
+        [MonoPInvokeCallback(typeof(Microphone_OnPermissionGrantedDelegate))]
+        private static void Microphone_OnPermissionGranted()
+        {
+            permissionsGranted = true;
+            permissionTcs?.SetResult(true);
+        }
+
+        private delegate void Microphone_OnPermissionDeniedDelegate();
+
+        [MonoPInvokeCallback(typeof(Microphone_OnPermissionDeniedDelegate))]
+        private static void Microphone_OnPermissionDenied()
+        {
+            permissionsGranted = false;
+            permissionTcs?.SetResult(false);
         }
 
         [DllImport("__Internal")]
@@ -90,10 +127,89 @@ namespace Utilities.Audio
         public static string[] devices
 #pragma warning restore IDE1006
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
-            get => deviceList;
+#if PLATFORM_WEBGL && !UNITY_EDITOR
+            get
+            {
+                if (!permissionsGranted)
+                {
+                    InitializeMicrophone();
+                }
+                return deviceList;
+            }
 #else
             get => UnityEngine.Microphone.devices;
+#endif
+        }
+
+        /// <summary>
+        /// Request user permission to use the microphone.
+        /// </summary>
+        /// <returns>
+        /// True, if user has granted microphone permissions for this device
+        /// </returns>
+        public static async Task<bool> RequestRecordingPermissionsAsync(CancellationToken cancellationToken)
+        {
+#if PLATFORM_WEBGL && !UNITY_EDITOR
+            if (permissionsGranted) { return true; }
+            if (permissionTcs != null)
+            {
+                Debug.LogWarning("Permission request already in progress!");
+                return false;
+            }
+
+            permissionTcs = new TaskCompletionSource<bool>();
+
+            try
+            {
+                InitializeMicrophone();
+                return await permissionTcs.Task.WithCancellation(cancellationToken);
+            }
+            finally
+            {
+                permissionTcs = null;
+            }
+#elif UNITY_ANDROID
+            if (UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Microphone))
+            {
+                return true;
+            }
+
+            var permissionTcs = new TaskCompletionSource<bool>();
+            var callbacks = new UnityEngine.Android.PermissionCallbacks();
+
+            void PermissionGranted(string permissionName)
+            {
+                permissionTcs.TrySetResult(true);
+            }
+
+            void PermissionDenied(string permissionName)
+            {
+                permissionTcs.TrySetResult(false);
+            }
+
+            try
+            {
+                callbacks.PermissionGranted += PermissionGranted;
+                callbacks.PermissionDenied += PermissionDenied;
+                UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Microphone, callbacks);
+                return await permissionTcs.Task.WithCancellation(cancellationToken);
+            }
+            finally
+            {
+                callbacks.PermissionGranted -= PermissionGranted;
+                callbacks.PermissionDenied -= PermissionDenied;
+            }
+#elif PLATFORM_IOS
+            if (Application.HasUserAuthorization(UserAuthorization.Microphone))
+            {
+                return true;
+            }
+
+            await Application.RequestUserAuthorization(UserAuthorization.Microphone);
+            return Application.HasUserAuthorization(UserAuthorization.Microphone);
+#else
+            await Task.CompletedTask.WithCancellation(cancellationToken);
+            return true;
 #endif
         }
 
@@ -124,7 +240,13 @@ namespace Utilities.Audio
             }
 
             isRecording = true;
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if PLATFORM_WEBGL && !UNITY_EDITOR
+            if (!permissionsGranted)
+            {
+                Debug.LogError(k_NotInitialized);
+                return null;
+            }
+
             currentPosition = -1;
             var samples = frequency * length;
             audioBuffer = new float[samples];
@@ -160,12 +282,12 @@ namespace Utilities.Audio
         {
             if (!isRecording) { return; }
             isRecording = false;
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if PLATFORM_WEBGL && !UNITY_EDITOR
             var result = Microphone_StopRecording(deviceName);
 
             if (result > 0)
             {
-                Debug.LogError("An error occurred when attempting to stop recording!");
+                Debug.LogError($"An error occurred when attempting to stop recording! Code: {result}");
             }
 
             currentClip = null;
@@ -180,7 +302,13 @@ namespace Utilities.Audio
         /// <param name="deviceName">The name of the device.</param>
         public static bool IsRecording(string deviceName)
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if PLATFORM_WEBGL && !UNITY_EDITOR
+            if (!permissionsGranted)
+            {
+                Debug.LogWarning(k_NotInitialized);
+                return false;
+            }
+
             return Microphone_IsRecording(deviceName);
 #else
             return UnityEngine.Microphone.IsRecording(deviceName);
@@ -198,7 +326,8 @@ namespace Utilities.Audio
         /// </remarks>
         public static void GetDeviceCaps(string deviceName, out int minFreq, out int maxFreq)
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if PLATFORM_WEBGL && !UNITY_EDITOR
+            InitializeMicrophone();
             // WebGL only supports 44100 Hz
             minFreq = 44100;
             maxFreq = 44100;
@@ -214,7 +343,7 @@ namespace Utilities.Audio
         public static int GetPosition(string deviceName)
         {
             if (!isRecording) { return 0; }
-#if UNITY_WEBGL && !UNITY_EDITOR
+#if PLATFORM_WEBGL && !UNITY_EDITOR
             return currentPosition;
 #else
             return UnityEngine.Microphone.GetPosition(deviceName);

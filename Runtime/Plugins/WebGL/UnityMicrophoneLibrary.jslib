@@ -1,30 +1,44 @@
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
 var UnityMicrophoneLibrary = {
   /**
    * Array of instanced Microphone objects.
    */
   $microphoneDevices: [],
   /**
+   * The active microphone device.
+   */
+  $activeMicrophone: null,
+  /**
    * Initializes the Microphone context. Will alert the user if the browser does not support recording.
    * Sets up an interval to check the audio context state and resume it if it is suspended or interrupted.
-   * @param {number} onEnumerateDevicesPtr The pointer to the enumerate devices callback.
+   * @param {number} onEnumerateDevicesPtr The pointer to the onEnumerateDevices function callback.
+   * @param {number} onPermissionGrantedPtr The pointer to the permission granted callback.
+   * @param {number} onPermissionDeniedPtr The pointer to the permission denied callback.
    * @returns {number} The status code. 0 if successful, 1 if an error occurred, 2 if the browser does not support recording.
    */
-  Microphone_Init: function (onEnumerateDevicesPtr) {
+  Microphone_Init: function (onEnumerateDevicesPtr, onPermissionGrantedPtr, onPermissionDeniedPtr) {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices || !navigator.mediaDevices.getUserMedia) {
         alert('UnityMicrophoneLibrary is not supported in this browser!');
         return 2;
       }
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(_ => {
-        // console.log("UnityMicrophoneLibrary permissions granted!");
-        queryAudioDevices(onEnumerateDevicesPtr);
-
-        navigator.mediaDevices.ondevicechange = (_) => {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(_ => {
+          // console.log("UnityMicrophoneLibrary permissions granted!");
           queryAudioDevices(onEnumerateDevicesPtr);
-        };
-      }).catch(error => {
-        console.error(error);
-      });
+          if (!navigator.mediaDevices.ondevicechange) {
+            navigator.mediaDevices.ondevicechange = (_) => {
+              queryAudioDevices(onEnumerateDevicesPtr);
+            };
+          }
+          Module.dynCall_v(onPermissionGrantedPtr);
+        }, reason => {
+          console.error(`UnityMicrophoneLibrary: permissions denied! ${reason}`);
+          Module.dynCall_v(onPermissionDeniedPtr);
+        }).catch(error => {
+          console.error(error);
+        });
       return 0;
     } catch (error) {
       console.error(error);
@@ -83,17 +97,18 @@ var UnityMicrophoneLibrary = {
         return 2;
       }
       var microphone = getMicrophoneDevice(UTF8ToString(deviceName));
-      microphone.position = 0;
-      microphone.loop = loop;
-      microphone.audioBufferPtr = audioBufferPtr;
-      microphone.onBufferReadPtr = onBufferReadPtr;
-      microphone.samples = length * frequency;
+      activeMicrophone = microphone;
+      activeMicrophone.position = 0;
+      activeMicrophone.loop = loop;
+      activeMicrophone.audioBufferPtr = audioBufferPtr;
+      activeMicrophone.onBufferReadPtr = onBufferReadPtr;
+      activeMicrophone.samples = length * frequency;
       if (frequency <= 0) {
-        frequency = microphone.maxFrequency;
+        frequency = activeMicrophone.maxFrequency;
       }
       var constraints = {
         audio: {
-          deviceId: microphone.device.deviceId ? { exact: microphone.device.deviceId } : undefined,
+          deviceId: activeMicrophone.device.deviceId ? { exact: activeMicrophone.device.deviceId } : undefined,
           sampleRate: frequency,
         }
       };
@@ -102,36 +117,39 @@ var UnityMicrophoneLibrary = {
         const source = audioContext.createMediaStreamSource(stream);
         const processor = audioContext.createScriptProcessor(4096, 1, 1);
         processor.onaudioprocess = (event) => {
-          if (!microphone.isRecording || !microphone.audioBufferPtr || !microphone.onBufferReadPtr) {
-            return; // recording was stopped, or buffer is not ready
+          if (!activeMicrophone || !activeMicrophone.isRecording) {
+            processor.onaudioprocess = null;
+            return; // microphone was stopped
+          }
+          if (!activeMicrophone.audioBufferPtr || !activeMicrophone.onBufferReadPtr) {
+            return; // buffer is not ready
           }
           const data = event.inputBuffer.getChannelData(0); // unity only supports mono
           for (var i = 0; i < data.length; i++) {
-            Module.HEAPF32[microphone.audioBufferPtr / Float32Array.BYTES_PER_ELEMENT + microphone.position] = data[i];
-            microphone.position++;
-
-            if (microphone.position >= microphone.samples) {
-              if (microphone.loop) {
-                microphone.position = 0;
+            Module.HEAPF32[activeMicrophone.audioBufferPtr / Float32Array.BYTES_PER_ELEMENT + activeMicrophone.position] = data[i];
+            activeMicrophone.position++;
+            if (activeMicrophone.position >= activeMicrophone.samples) {
+              if (activeMicrophone.loop) {
+                activeMicrophone.position = 0;
               } else {
-                microphone.position = microphone.samples - 1;
+                activeMicrophone.position = activeMicrophone.samples - 1;
                 break;
               }
             }
           }
-          Module.dynCall_vi(microphone.onBufferReadPtr, microphone.position);
+          Module.dynCall_vi(activeMicrophone.onBufferReadPtr, activeMicrophone.position);
         };
         source.connect(processor);
         processor.connect(audioContext.destination);
-        microphone.processor = processor;
-        microphone.source = source;
-        microphone.audioContext = audioContext;
-        microphone.stream = stream;
+        activeMicrophone.processor = processor;
+        activeMicrophone.source = source;
+        activeMicrophone.audioContext = audioContext;
+        activeMicrophone.stream = stream;
       }).catch(error => {
         console.error(error);
         this.Microphone_StopRecording(deviceName);
       });
-      microphone.isRecording = true;
+      activeMicrophone.isRecording = true;
       return 0;
     } catch (error) {
       console.error(error);
@@ -146,24 +164,29 @@ var UnityMicrophoneLibrary = {
   Microphone_StopRecording: function (deviceName) {
     try {
       var microphone = getMicrophoneDevice(UTF8ToString(deviceName));
-      if (!microphone.isRecording) {
+      if (activeMicrophone !== microphone) {
+        console.warn("UnityMicrophoneLibrary: recording is not active for this device");
+        return 3;
+      }
+      if (!activeMicrophone.isRecording) {
         console.warn("UnityMicrophoneLibrary: no recording in progress");
         return 2;
       }
       try {
-        microphone.processor.disconnect();
-        microphone.source.disconnect();
-        microphone.audioContext.close();
-        microphone.stream.getTracks().forEach(track => track.stop());
+        activeMicrophone.processor.disconnect();
+        activeMicrophone.source.disconnect();
+        activeMicrophone.audioContext.close();
+        activeMicrophone.stream.getTracks().forEach(track => track.stop());
       } finally {
-        microphone.isRecording = false;
-        microphone.audioBufferPtr = null;
-        microphone.onBufferReadPtr = null;
-        microphone.audioContext = null;
-        microphone.processor = null;
-        microphone.loop = null;
-        microphone.source = null;
-        microphone.stream = null;
+        activeMicrophone.isRecording = false;
+        activeMicrophone.audioBufferPtr = null;
+        activeMicrophone.onBufferReadPtr = null;
+        activeMicrophone.audioContext = null;
+        activeMicrophone.processor = null;
+        activeMicrophone.loop = null;
+        activeMicrophone.source = null;
+        activeMicrophone.stream = null;
+        activeMicrophone = null;
       }
       return 0;
     } catch (error) {

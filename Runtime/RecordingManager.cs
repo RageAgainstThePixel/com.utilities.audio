@@ -189,6 +189,14 @@ namespace Utilities.Audio
                 return null;
             }
 
+            var hasRecordingPermission = await Microphone.RequestRecordingPermissionsAsync(cancellationToken);
+
+            if (!hasRecordingPermission)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] Microphone permissions denied!");
+                return null;
+            }
+
             lock (recordingLock)
             {
                 isRecording = true;
@@ -204,13 +212,13 @@ namespace Utilities.Audio
                 DefaultRecordingDevice = null;
             }
 
+            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
+
             if (Microphone.devices.Length == 0)
             {
                 Debug.LogError($"[{nameof(RecordingManager)}] No devices found to record from!");
                 return null;
             }
-
-            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
 
             if (EnableDebug)
             {
@@ -318,6 +326,14 @@ namespace Utilities.Audio
                 return;
             }
 
+            var hasRecordingPermission = await Microphone.RequestRecordingPermissionsAsync(cancellationToken);
+
+            if (!hasRecordingPermission)
+            {
+                Debug.LogError($"[{nameof(RecordingManager)}] Microphone permissions denied!");
+                return;
+            }
+
             lock (recordingLock)
             {
                 isRecording = true;
@@ -328,13 +344,13 @@ namespace Utilities.Audio
                 DefaultRecordingDevice = null;
             }
 
+            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
+
             if (Microphone.devices.Length == 0)
             {
                 Debug.LogError($"[{nameof(RecordingManager)}] No devices found to record from!");
                 return;
             }
-
-            Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
 
             if (EnableDebug)
             {
