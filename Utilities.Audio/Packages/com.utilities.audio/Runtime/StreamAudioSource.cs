@@ -65,7 +65,7 @@ namespace Utilities.Audio
                 {
                     AudioStream_SetVolume(audioContextPtr, audioSource.volume);
 
-                    if (audioBuffer.Length >= buffer.Length)
+                    if (audioBuffer.Count >= buffer.Length)
                     {
                         var bufferLength = 0;
 
