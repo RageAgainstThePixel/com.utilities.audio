@@ -110,7 +110,9 @@ var UnityAudioLibrary = {
         return 0;
       }
       const chunk = new Float32Array(Module.HEAPF32.buffer, bufferPtr, bufferLength);
-      instance.chunkQueue.push(chunk);
+      // copy the buffer so that it isn't overwritten by the next buffer update
+      const chunkCopy = new Float32Array(chunk);
+      instance.chunkQueue.push(chunkCopy);
       // console.log(`[${audioPtr}] Appended buffer of length ${bufferLength}.`);
       return 0;
     } catch (error) {

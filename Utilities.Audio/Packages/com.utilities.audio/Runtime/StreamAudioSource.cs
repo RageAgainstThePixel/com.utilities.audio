@@ -141,7 +141,7 @@ namespace Utilities.Audio
 #endif
 
         public async void BufferCallback(float[] samples)
-            => await BufferCallbackAsync(samples).ConfigureAwait(false);
+            => await BufferCallbackAsync(samples);
 
         public async Task BufferCallbackAsync(float[] samples)
         {
