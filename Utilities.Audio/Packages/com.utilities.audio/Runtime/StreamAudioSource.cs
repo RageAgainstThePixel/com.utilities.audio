@@ -15,6 +15,10 @@ namespace Utilities.Audio
     [RequireComponent(typeof(AudioSource))]
     public class StreamAudioSource : MonoBehaviour
     {
+        [Preserve]
+        public static implicit operator AudioSource(StreamAudioSource streamAudioSource)
+            => streamAudioSource.audioSource;
+
         [SerializeField]
         private AudioSource audioSource;
 
@@ -25,6 +29,8 @@ namespace Utilities.Audio
 #endif
 
         private readonly ConcurrentQueue<float> audioBuffer = new();
+
+        public bool IsEmpty => audioBuffer.IsEmpty;
 
         private void OnValidate()
         {
@@ -134,11 +140,9 @@ namespace Utilities.Audio
         }
 #endif
 
-        [Preserve]
         public async void BufferCallback(float[] samples)
-            => await BufferCallbackAsync(samples).ConfigureAwait(false);
+            => await BufferCallbackAsync(samples);
 
-        [Preserve]
         public async Task BufferCallbackAsync(float[] samples)
         {
             foreach (var sample in samples)
@@ -149,7 +153,6 @@ namespace Utilities.Audio
             await Task.Yield();
         }
 
-        [Preserve]
         public async Task BufferCallbackAsync(ReadOnlyMemory<byte> audioData, int inputSampleRate, int outputSampleRate)
         {
             var samples = PCMEncoder.Decode(audioData.ToArray(), inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate);

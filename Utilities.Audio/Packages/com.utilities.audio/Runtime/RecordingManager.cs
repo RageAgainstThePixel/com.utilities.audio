@@ -214,6 +214,11 @@ namespace Utilities.Audio
 
             Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
 
+            using var micCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, micCts.Token);
+            var timeoutToken = timeoutCts.Token;
+            await new WaitUntil(() => Microphone.devices.Length > 0 || timeoutToken.IsCancellationRequested);
+
             if (Microphone.devices.Length == 0)
             {
                 Debug.LogError($"[{nameof(RecordingManager)}] No devices found to record from!");
@@ -345,6 +350,11 @@ namespace Utilities.Audio
             }
 
             Microphone.GetDeviceCaps(DefaultRecordingDevice, out var minFreq, out var maxFreq);
+
+            using var micCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, micCts.Token);
+            var timeoutToken = timeoutCts.Token;
+            await new WaitUntil(() => Microphone.devices.Length > 0 || timeoutToken.IsCancellationRequested);
 
             if (Microphone.devices.Length == 0)
             {
