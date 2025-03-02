@@ -2,7 +2,6 @@
 
 using System;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -159,7 +158,8 @@ namespace Utilities.Audio
         {
             if (pcmData.Length % (int)size != 0)
             {
-                throw new ArgumentException($"{nameof(pcmData)} length must be multiple of the specified {nameof(PCMFormatSize)}!", nameof(pcmData));
+                Debug.LogWarning($"{nameof(pcmData)} length must be multiple of the specified {nameof(PCMFormatSize)}! Truncating pcm data!");
+                Array.Resize(ref pcmData, pcmData.Length - pcmData.Length % (int)size);
             }
 
             var sampleCount = pcmData.Length / (int)size;
