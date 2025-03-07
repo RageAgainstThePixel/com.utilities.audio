@@ -20,12 +20,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+      checks: write
     strategy:
       fail-fast: false
       matrix:
         include: # for each os specify the build targets
           - os: ubuntu-latest
             unity-version: 2022.x
+            build-target: Android
+          - os: ubuntu-latest
+            unity-version: 6000.x
+            build-target: Android
+          - os: ubuntu-latest
+            unity-version: 2022.x
             build-target: StandaloneLinux64
           - os: ubuntu-latest
             unity-version: 6000.x
@@ -36,24 +43,24 @@ jobs:
           - os: ubuntu-latest
             unity-version: 6000.x
             build-target: WebGL
-          - os: ubuntu-latest
-            unity-version: 2022.x
-            build-target: Android
-          - os: ubuntu-latest
-            unity-version: 6000.x
-            build-target: Android
-          - os: ubuntu-latest
-            unity-version: 2022.x
-            build-target: iOS
-          - os: ubuntu-latest
-            unity-version: 6000.x
-            build-target: iOS
           - os: windows-latest
             unity-version: 2022.x
             build-target: StandaloneWindows64
           - os: windows-latest
             unity-version: 6000.x
             build-target: StandaloneWindows64
+          - os: windows-latest
+            unity-version: 2022.x
+            build-target: WSAPlayer
+          - os: windows-latest
+            unity-version: 6000.x
+            build-target: WSAPlayer
+          - os: macos-latest
+            unity-version: 2022.x
+            build-target: iOS
+          - os: macos-latest
+            unity-version: 6000.x
+            build-target: iOS
           - os: macos-latest
             unity-version: 2022.x
             build-target: StandaloneOSX
@@ -75,7 +82,6 @@ jobs:
         name: '${{ matrix.build-target }}-Validate'
         with:
           log-name: '${{ matrix.build-target }}-Validate'
-          build-target: ${{ matrix.build-target }}
           args: '-quit -nographics -batchmode -executeMethod Utilities.Editor.BuildPipeline.UnityPlayerBuildTools.ValidateProject -importTMProEssentialsAsset'
       - uses: RageAgainstThePixel/unity-action@v1
         name: '${{ matrix.build-target }}-Test'
@@ -87,12 +93,7 @@ jobs:
         name: '${{ matrix.build-target }}-Build'
         with:
           log-name: '${{ matrix.build-target }}-Build'
-          build-target: ${{ matrix.build-target }}
           args: '-quit -nographics -batchmode -executeMethod Utilities.Editor.BuildPipeline.UnityPlayerBuildTools.StartCommandLineBuild'
-      - uses: RageAgainstThePixel/unity-test-summary@v1
-        if: success() || failure()
-        with:
-          test-results: ${{ github.workspace }}/**/*-results.xml
       - uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
@@ -101,3 +102,7 @@ jobs:
           name: '${{ github.run_number }}.${{ github.run_attempt }}-${{ matrix.os }}-${{ matrix.unity-version }}-${{ matrix.build-target }}-Artifacts'
           path: |
             ${{ github.workspace }}/**/*.log
+      - uses: RageAgainstThePixel/unity-test-summary@v1
+        if: success() || failure()
+        with:
+          test-results: ${{ github.workspace }}/Logs/*-results.xml
