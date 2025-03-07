@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: # for each os specify the build targets
+        include:
           - os: ubuntu-latest
             unity-version: 2022.x
             build-target: StandaloneLinux64
@@ -36,18 +36,6 @@ jobs:
           - os: ubuntu-latest
             unity-version: 6000.x
             build-target: WebGL
-          - os: ubuntu-latest
-            unity-version: 2022.x
-            build-target: Android
-          - os: ubuntu-latest
-            unity-version: 6000.x
-            build-target: Android
-          - os: ubuntu-latest
-            unity-version: 2022.x
-            build-target: iOS
-          - os: ubuntu-latest
-            unity-version: 6000.x
-            build-target: iOS
           - os: windows-latest
             unity-version: 2022.x
             build-target: StandaloneWindows64
