@@ -172,7 +172,7 @@ namespace Utilities.Audio
                     for (var i = 0; i < sampleCount; i++)
                     {
                         var sample = pcmData[i];
-                        var normalized = (sample - 128f) / 127f; // Normalize to [-1, 1] range
+                        var normalized = sample / 128f - 1f; // Normalize to [-1, 1] range
                         samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
@@ -181,7 +181,7 @@ namespace Utilities.Audio
                     for (var i = 0; i < sampleCount; i++)
                     {
                         var sample = (short)((pcmData[i * 2 + 1] << 8) | pcmData[i * 2]);
-                        var normalized = sample / (float)short.MaxValue; // Normalize to [-1, 1] range
+                        var normalized = sample / 32767f; // Normalize to [-1, 1] range
                         samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
@@ -191,7 +191,7 @@ namespace Utilities.Audio
                     {
                         var sample = (pcmData[i * 3] << 0) | (pcmData[i * 3 + 1] << 8) | (pcmData[i * 3 + 2] << 16);
                         sample = (sample & 0x800000) != 0 ? sample | unchecked((int)0xff000000) : sample & 0x00ffffff;
-                        var normalized = sample / (float)(1 << 23); // Normalize to [-1, 1] range
+                        var normalized = sample / 8388608f; // Normalize to [-1, 1] range
                         samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
@@ -200,7 +200,7 @@ namespace Utilities.Audio
                     for (var i = 0; i < pcmData.Length; i += 4)
                     {
                         var sample = (pcmData[i + 3] << 24) | (pcmData[i + 2] << 16) | (pcmData[i + 1] << 8) | pcmData[i];
-                        var normalized = sample / (float)int.MaxValue; // Normalize to [-1, 1] range
+                        var normalized = sample / 2147483648f; // Normalize to [-1, 1] range
                         samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
@@ -249,24 +249,16 @@ namespace Utilities.Audio
         {
             if (inputSampleRate == outputSampleRate) { return samples; }
 
-            var ratio = outputSampleRate / (double)inputSampleRate;
+            var ratio = outputSampleRate / (float)inputSampleRate;
             var resampledLength = (int)Math.Round(samples.Length * ratio, MidpointRounding.ToEven);
             buffer ??= new float[resampledLength];
 
-            if (buffer.Length != resampledLength)
-            {
-                buffer = new float[resampledLength];
-            }
-
             for (var i = 0; i < resampledLength; i++)
             {
-                var resampleIndex = Math.Round(i / ratio, MidpointRounding.ToEven);
-                var leftIndex = (int)Math.Floor(resampleIndex);
-                var rightIndex = leftIndex + 1;
-                var fraction = resampleIndex - leftIndex;
-                var leftSample = (leftIndex >= samples.Length ? samples[^1] : samples[leftIndex]) * (1 - fraction);
-                var rightSample = (rightIndex >= samples.Length ? samples[^1] : samples[rightIndex]) * fraction;
-                buffer[i] = (float)(leftSample + rightSample);
+                var index = i / ratio;
+                var floor = Mathf.Clamp(Mathf.FloorToInt(index), 0, samples.Length - 1);
+                var ceil = Mathf.Clamp(Mathf.CeilToInt(index), 0, samples.Length - 1);
+                buffer[i] = Mathf.Lerp(samples[floor], samples[ceil], index - floor);
             }
 
             return buffer;

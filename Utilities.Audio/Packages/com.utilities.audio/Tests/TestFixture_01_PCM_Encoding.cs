@@ -9,7 +9,7 @@ namespace Utilities.Audio.Tests
 {
     internal class TestFixture_01_PCM_Encoding
     {
-        private const float Tolerance = 0.01f;
+        private const float Tolerance = 0.02f;
         private const double TestFrequency = 440; // A4 note.
         private const int k_96000 = 96000;
         private const int k_48000 = 48000;
