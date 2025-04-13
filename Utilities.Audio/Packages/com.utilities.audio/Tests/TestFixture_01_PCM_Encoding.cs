@@ -18,6 +18,11 @@ namespace Utilities.Audio.Tests
         private const int k_24000 = 24000;
         private const int k_16000 = 16000;
 
+        private const float k_8bit_QuantizationTolerance = 1.0f / (1 << 7);
+        private const float k_16bit_QuantizationTolerance = 1.0f / (1 << 15);
+        private const float k_24bit_QuantizationTolerance = 1.0f / (1 << 23);
+        private const float k_32bit_QuantizationTolerance = 1.0f / (1L << 31);
+
         [OneTimeSetUp]
         public void Setup()
         {
@@ -53,6 +58,8 @@ namespace Utilities.Audio.Tests
             }
         }
 
+        #region Resample Tests
+
         [Test]
         public void Test_00_02_Resample_SameSampleRate_ReturnsOriginalSamples()
         {
@@ -67,7 +74,7 @@ namespace Utilities.Audio.Tests
             float[] samples1 = { 0.1f, 0.2f, 0.3f, 0.4f };
 
             var result1 = PCMEncoder.Resample(samples1, null, k_44100, k_24000);
-            Debug.Log($"values: {string.Join(',', result1)}");
+            Debug.Log($"result1: [{string.Join(',', result1)}]");
             Assert.AreEqual(2, result1.Length);
             Assert.AreEqual(0.1f, result1[0], Tolerance);
             Assert.AreEqual(0.3f, result1[1], Tolerance);
@@ -82,7 +89,7 @@ namespace Utilities.Audio.Tests
             float[] samples2 = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 
             var result2 = PCMEncoder.Resample(samples2, null, k_48000, k_16000);
-
+            Debug.Log($"result2: [{string.Join(',', result2)}]");
             Assert.AreEqual(3, result2.Length);
             Assert.AreEqual(0.1f, result2[0], Tolerance);
             Assert.AreEqual(0.4f, result2[1], Tolerance);
@@ -98,7 +105,7 @@ namespace Utilities.Audio.Tests
             float[] samples3 = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
 
             var result3 = PCMEncoder.Resample(samples3, null, k_44100, k_22050);
-
+            Debug.Log($"result3: [{string.Join(',', result3)}]");
             Assert.AreEqual(5, result3.Length);
             Assert.AreEqual(0.1f, result3[0], Tolerance);
             Assert.AreEqual(0.3f, result3[1], Tolerance);
@@ -116,14 +123,17 @@ namespace Utilities.Audio.Tests
             float[] samples4 = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
 
             var result4 = PCMEncoder.Resample(samples4, null, k_16000, k_96000);
-
+            Debug.Log($"result4: [{string.Join(',', result4)}]");
             Assert.AreEqual(60, result4.Length);
             Assert.AreEqual(0.1f, result4[0], Tolerance);
-            Assert.AreEqual(0.3f, result4[10], Tolerance);
-            Assert.AreEqual(0.4f, result4[20], Tolerance);
+            Assert.AreEqual(0.2f, result4[6], Tolerance);
+            Assert.AreEqual(0.3f, result4[12], Tolerance);
+            Assert.AreEqual(0.4f, result4[18], Tolerance);
+            Assert.AreEqual(0.5f, result4[24], Tolerance);
             Assert.AreEqual(0.6f, result4[30], Tolerance);
-            Assert.AreEqual(0.8f, result4[40], Tolerance);
-            Assert.AreEqual(0.9f, result4[50], Tolerance);
+            Assert.AreEqual(0.7f, result4[36], Tolerance);
+            Assert.AreEqual(0.8f, result4[42], Tolerance);
+            Assert.AreEqual(0.9f, result4[48], Tolerance);
             Assert.AreEqual(1f, result4[59], Tolerance);
 
             // assert that each value is greater than or equal to the prev
@@ -233,6 +243,10 @@ namespace Utilities.Audio.Tests
             Assert.AreEqual(1f, upSample[44099], Tolerance);
         }
 
+        #endregion Resample Tests
+
+        #region 8 Bit Tests
+
         [Test]
         public void Test_01_01_PCM_Encode_8Bit_NoTrim()
         {
@@ -245,11 +259,9 @@ namespace Utilities.Audio.Tests
             // Assert at the end of the unit test
             Assert.AreEqual(k_44100, decodedSamples.Length);
 
-            const float quantizationTolerance = 1.0f / 127; // Tolerance for 8-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(testSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(testSamples[i], decodedSamples[i], k_8bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
 
@@ -267,12 +279,10 @@ namespace Utilities.Audio.Tests
             // The decoded samples should be only the non-silent portion of the original samples.
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
-            const float k_8bit_quantizationTolerance = 1.0f / 127; // Tolerance for 8-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
                 // Compare each non-silent decoded sample against the generated sine wave samples, allowing for quantization error.
-                Assert.AreEqual(testSamples[fixedSilenceAtStart + i], decodedSamples[i], k_8bit_quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(testSamples[fixedSilenceAtStart + i], decodedSamples[i], k_8bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
 
@@ -289,13 +299,15 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_24000, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
 
-            const float quantizationTolerance = 1.0f / 127; // Tolerance for 8-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(resampledSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(resampledSamples[i], decodedSamples[i], k_8bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
+
+        #endregion 8 Bit Tests
+
+        #region 16 Bit Tests
 
         [Test]
         public void Test_02_01_PCM_Encode_16Bit_NoTrim()
@@ -308,11 +320,9 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
-            const float quantizationTolerance = 1.0f / short.MaxValue; // Tolerance for 16-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(testSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(testSamples[i], decodedSamples[i], k_16bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
 
@@ -331,11 +341,9 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
-            const float quantizationTolerance = 1.0f / short.MaxValue; // Tolerance for 16-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(testSamples[fixedSilenceAtStart + i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(testSamples[fixedSilenceAtStart + i], decodedSamples[i], k_16bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
 
@@ -352,13 +360,15 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
 
-            const float quantizationTolerance = 1.0f / short.MaxValue; // Tolerance for 16-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(resampledSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(resampledSamples[i], decodedSamples[i], k_16bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
+
+        #endregion  16 Bit Tests
+
+        #region 24 Bit Tests
 
         [Test]
         public void Test_03_01_PCM_Encode_24Bit_NoTrim()
@@ -371,11 +381,9 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
-            const float quantizationTolerance = 2.0f / (1 << 23); // Tolerance for 24-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(testSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(testSamples[i], decodedSamples[i], k_24bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
 
@@ -394,11 +402,9 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
-            const float quantizationTolerance = 2.0f / (1 << 23); // Tolerance for 24-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(testSamples[fixedSilenceAtStart + i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(testSamples[fixedSilenceAtStart + i], decodedSamples[i], k_24bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
 
@@ -415,13 +421,15 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_24000, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
 
-            const float quantizationTolerance = 2.0f / (1 << 23); // Tolerance for 24-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(resampledSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(resampledSamples[i], decodedSamples[i], k_24bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
+
+        #endregion 24 Bit Tests
+
+        #region 32 Bit Tests
 
         [Test]
         public void Test_04_01_PCM_Encode_32Bit_NoTrim()
@@ -434,11 +442,9 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
-            const float quantizationTolerance = 1.0f / int.MaxValue; // Tolerance for 32-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(testSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(testSamples[i], decodedSamples[i], k_32bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
 
@@ -457,16 +463,14 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
-            const float quantizationTolerance = 1.0f / int.MaxValue; // Tolerance for 32-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(testSamples[fixedSilenceAtStart + i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(testSamples[fixedSilenceAtStart + i], decodedSamples[i], k_32bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
 
         [Test]
-        public void Test_04_03_PCM_Encode_24Bit_Resampled()
+        public void Test_04_03_PCM_Encode_32Bit_Resampled()
         {
             var originalSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, k_44100);
             var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_44100, k_24000);
@@ -478,12 +482,12 @@ namespace Utilities.Audio.Tests
 
             Assert.AreEqual(k_24000, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
 
-            const float quantizationTolerance = 1.0f / int.MaxValue; // Tolerance for 32-bit quantization
-
             for (var i = 0; i < decodedSamples.Length; i++)
             {
-                Assert.AreEqual(resampledSamples[i], decodedSamples[i], quantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
+                Assert.AreEqual(resampledSamples[i], decodedSamples[i], k_32bit_QuantizationTolerance, $"Sample value at index {i} after decoding is outside the allowed tolerance.");
             }
         }
+
+        #endregion 32 Bit Tests
     }
 }
