@@ -165,13 +165,7 @@ namespace Utilities.Audio
             await Task.Yield();
         }
 
-        public async void clearBuffer()
-            => await clearBufferAsync();
-
-        public async Task clearBufferAsync()
-        {
-            audioBuffer.Clear();
-            await Task.Yield();
-        }
+        public void ClearBuffer()
+            => audioBuffer.Clear();
     }
 }
