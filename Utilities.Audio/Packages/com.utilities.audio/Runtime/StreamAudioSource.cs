@@ -164,5 +164,8 @@ namespace Utilities.Audio
 
             await Task.Yield();
         }
+
+        public void ClearBuffer()
+            => audioBuffer.Clear();
     }
 }
