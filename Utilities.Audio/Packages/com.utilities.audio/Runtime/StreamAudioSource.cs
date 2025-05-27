@@ -92,10 +92,6 @@ namespace Utilities.Audio
                                 buffer[i] = sample;
                                 bufferLength++;
                             }
-                            else
-                            {
-                                break;
-                            }
                         }
 
                         //Debug.Log($"AudioStream_AppendBufferPlayback::bufferLength:{bufferLength}");
