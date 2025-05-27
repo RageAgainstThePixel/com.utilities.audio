@@ -9,12 +9,14 @@
  * @returns {void}
 */
 function initializeDynCalls() {
-  Module.dynCall_v = Module.dynCall_v || function (cb) {
-    return getWasmTableEntry(cb)();
-  };
-  Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
-    return getWasmTableEntry(cb)(arg1);
-  };
+  if (typeof getWasmTableEntry !== "undefined") {
+    Module.dynCall_v = function (cb) {
+      return getWasmTableEntry(cb)();
+    }
+    Module.dynCall_vi = function (cb, arg1) {
+      return getWasmTableEntry(cb)(arg1);
+    }
+  }
 }
 /**
  * Queries the audio devices and populates the microphoneDevices array.
