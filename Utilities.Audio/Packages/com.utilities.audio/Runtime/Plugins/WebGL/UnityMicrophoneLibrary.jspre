@@ -8,16 +8,16 @@
  * @see https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
  * @returns {void}
 */
-function initializeDynCalls() {
+Module['preRun'].push(function () {
   if (typeof getWasmTableEntry !== "undefined") {
-    Module.dynCall_v = function (cb) {
+    Module.dynCall_v = Module.dynCall_v || function (cb) {
       return getWasmTableEntry(cb)();
     }
-    Module.dynCall_vi = function (cb, arg1) {
+    Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
       return getWasmTableEntry(cb)(arg1);
     }
   }
-}
+});
 /**
  * Queries the audio devices and populates the microphoneDevices array.
  * @param onEnumerateDevicesPtr The pointer to the onEnumerateDevices function.
@@ -114,9 +114,3 @@ function createWorkletProcessorURL() {
   const blob = new Blob([workletProcessorCode], { type: 'application/javascript' });
   return URL.createObjectURL(blob);
 }
-/**
- * Initializes DynCalls back to Unity in the Module.preRun.
- */
-Module['preRun'].push(function () {
-  initializeDynCalls();
-});
