@@ -14,7 +14,7 @@ var UnityAudioLibrary = {
    * This is used in place of missing OnAudioFilterRead in Unity.
    * The processAudio function is called every 20ms to match the OnAudioFilterRead callback frequency in Unity.
    * @param {number} playbackSampleRate The sample rate of the audio playback context.
-   * @returns A pointer to the audio playback context.
+   * @returns {number} A pointer to the audio playback context.
    */
   AudioStream_InitPlayback: function (playbackSampleRate) {
     try {
