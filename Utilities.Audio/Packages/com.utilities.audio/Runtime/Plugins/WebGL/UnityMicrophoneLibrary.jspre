@@ -10,15 +10,21 @@
 */
 if (typeof ENVIRONMENT_IS_PTHREAD === "undefined" || !ENVIRONMENT_IS_PTHREAD) {
   Module['preRun'].push(function () {
-    if (typeof getWasmTableEntry !== "undefined") {
-      Module.dynCall_v = Module.dynCall_v || function (cb) {
-        return getWasmTableEntry(cb)();
-      }
-      Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
-        return getWasmTableEntry(cb)(arg1);
-      }
-    }
+    initDynCalls();
   });
+} else {
+  // If we are in a pthread, we need to initialize the dynCalls immediately
+  initDynCalls();
+}
+function initDynCalls() {
+  if (typeof getWasmTableEntry !== "undefined") {
+    Module.dynCall_v = Module.dynCall_v || function (cb) {
+      return getWasmTableEntry(cb)();
+    }
+    Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
+      return getWasmTableEntry(cb)(arg1);
+    }
+  }
 }
 /**
  * Queries the audio devices and populates the microphoneDevices array.
