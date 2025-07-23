@@ -8,7 +8,7 @@
  * @see https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
  * @returns {void}
 */
-if (typeof ENVIRONMENT_IS_PTHREAD === "undefined" || !ENVIRONMENT_IS_PTHREAD) {
+if (!Module["ENVIRONMENT_IS_PTHREAD"]) {
   Module['preRun'].push(function () {
     initDynCalls();
   });
