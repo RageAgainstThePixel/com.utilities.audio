@@ -10,13 +10,13 @@
 */
 if (Module["ENVIRONMENT_IS_PTHREAD"]) {
   // If we are in a pthread, we need to initialize the dynCalls immediately
-  initDynCalls_audio();
+  _UnityMicrophoneLibrary_initDynCalls();
 } else {
   Module['preRun'].push(function () {
-    initDynCalls_audio();
+    _UnityMicrophoneLibrary_initDynCalls();
   });
 }
-function initDynCalls_audio() {
+function _UnityMicrophoneLibrary_initDynCalls() {
   if (typeof getWasmTableEntry !== "undefined") {
     Module.dynCall_v = Module.dynCall_v || function (cb) {
       return getWasmTableEntry(cb)();
