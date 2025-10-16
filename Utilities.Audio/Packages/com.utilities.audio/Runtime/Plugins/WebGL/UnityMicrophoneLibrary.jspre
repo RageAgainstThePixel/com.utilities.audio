@@ -8,15 +8,15 @@
  * @see https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
  * @returns {void}
 */
-if (!Module["ENVIRONMENT_IS_PTHREAD"]) {
-  Module['preRun'].push(function () {
-    initDynCalls();
-  });
-} else {
+if (Module["ENVIRONMENT_IS_PTHREAD"]) {
   // If we are in a pthread, we need to initialize the dynCalls immediately
-  initDynCalls();
+  initDynCalls_audio();
+} else {
+  Module['preRun'].push(function () {
+    initDynCalls_audio();
+  });
 }
-function initDynCalls() {
+function initDynCalls_audio() {
   if (typeof getWasmTableEntry !== "undefined") {
     Module.dynCall_v = Module.dynCall_v || function (cb) {
       return getWasmTableEntry(cb)();
