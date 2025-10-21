@@ -1,31 +1,32 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
-
-/**
- * Initializes the dynCall_* function table lookups.
- * Thanks to De-Panther for the following code.
- * Checks if specific dynCall functions exist,
- * if not, it will create them using the getWasmTableEntry function.
- * @see https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
- * @returns {void}
-*/
-if (Module["ENVIRONMENT_IS_PTHREAD"]) {
-  // If we are in a pthread, we need to initialize the dynCalls immediately
-  _UnityMicrophoneLibrary_initDynCalls();
-} else {
-  Module['preRun'].push(function () {
-    _UnityMicrophoneLibrary_initDynCalls();
-  });
-}
-function _UnityMicrophoneLibrary_initDynCalls() {
-  if (typeof getWasmTableEntry !== "undefined") {
-    Module.dynCall_v = Module.dynCall_v || function (cb) {
-      return getWasmTableEntry(cb)();
-    }
-    Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
-      return getWasmTableEntry(cb)(arg1);
+(function () { // wrap the function insert to avoid polluting global scope
+  /**
+   * Initializes the dynCall_* function table lookups.
+   * Thanks to De-Panther for the following code.
+   * Checks if specific dynCall functions exist,
+   * if not, it will create them using the getWasmTableEntry function.
+   * @see https://discussions.unity.com/t/makedyncall-replacing-dyncall-in-unity-6/1543088
+   * @returns {void}
+  */
+  if (Module["ENVIRONMENT_IS_PTHREAD"]) {
+    // If we are in a pthread, we need to initialize the dynCalls immediately
+    _initDynCalls();
+  } else {
+    Module['preRun'].push(function () {
+      _initDynCalls();
+    });
+  }
+  function _initDynCalls() {
+    if (typeof getWasmTableEntry !== "undefined") {
+      Module.dynCall_v = Module.dynCall_v || function (cb) {
+        return getWasmTableEntry(cb)();
+      }
+      Module.dynCall_vi = Module.dynCall_vi || function (cb, arg1) {
+        return getWasmTableEntry(cb)(arg1);
+      }
     }
   }
-}
+})();
 /**
  * Queries the audio devices and populates the microphoneDevices array.
  * @param onEnumerateDevicesPtr The pointer to the onEnumerateDevices function.
