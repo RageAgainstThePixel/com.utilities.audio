@@ -3,14 +3,14 @@
   "displayName": "Utilities.Audio",
   "description": "A simple package for audio extensions and utilities.",
   "keywords": [],
-  "version": "2.2.8",
+  "version": "2.3.0",
   "unity": "2021.3",
   "documentationUrl": "https://github.com/RageAgainstThePixel/com.utilities.audio#documentation",
   "changelogUrl": "https://github.com/RageAgainstThePixel/com.utilities.audio/releases",
   "license": "MIT",
   "repository": {
-    "type": "git",
-    "repository": "https://github.com/RageAgainstThePixel/com.utilities.audio.git"
+    "url": "https://github.com/RageAgainstThePixel/com.utilities.audio.git",
+    "type": "git"
   },
   "author": {
     "name": "Stephen Hodgson",
@@ -20,7 +20,7 @@
     "com.unity.modules.androidjni": "1.0.0",
     "com.unity.modules.audio": "1.0.0",
     "com.unity.modules.unitywebrequestaudio": "1.0.0",
-    "com.utilities.async": "2.2.3"
+    "com.utilities.async": "2.3.2"
   },
   "samples": [
     {
