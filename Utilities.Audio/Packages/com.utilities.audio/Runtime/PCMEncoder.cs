@@ -12,6 +12,9 @@ namespace Utilities.Audio
 {
     public class PCMEncoder : IEncoder
     {
+        [Preserve]
+        protected PCMEncoder() { }
+
         internal static readonly ISampleProvider DefaultSampleProvider = new UnitySampleProvider();
 
         /// <summary>
