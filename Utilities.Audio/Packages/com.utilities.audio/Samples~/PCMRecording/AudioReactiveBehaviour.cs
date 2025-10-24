@@ -21,7 +21,14 @@ namespace Utilities.Encoder.PCM.Samples.Recording
         [SerializeField]
         private float targetScale = 1f;
 
-        // Called automatically by Unity’s audio system on the audio thread
+        /// <summary>
+        /// Called automatically by Unity’s audio system on the audio thread
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="channels"></param>
+        /// <remarks>
+        /// IS NOT SUPPORTED IN WEBGL! <see href="https://docs.unity3d.com/ScriptReference/MonoBehaviour.OnAudioFilterRead.html"/>
+        /// </remarks>
         private void OnAudioFilterRead(float[] data, int channels)
         {
             // Compute the RMS value (volume level)
