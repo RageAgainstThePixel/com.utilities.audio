@@ -306,24 +306,57 @@ namespace Utilities.Audio
 
         [Obsolete("use new overload with outputSampleRate")]
         public static async void StartRecordingStream<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken) where TEncoder : IEncoder
-            => await StartRecordingStreamAsync<TEncoder>(bufferCallback, 44100, cancellationToken).ConfigureAwait(true);
+            => await StartRecordingStreamAsync<TEncoder>(bufferCallback, null, 44100, cancellationToken).ConfigureAwait(true);
 
         /// <summary>
         /// Starts the recording process and buffers the samples back as <see cref="ReadOnlyMemory{Tbytes}"/>.
         /// </summary>
+        /// <typeparam name="TEncoder"><see cref="IEncoder"/>.</typeparam>
         /// <param name="bufferCallback">The buffer callback with new sample data.</param>
         /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
         public static async void StartRecordingStream<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default) where TEncoder : IEncoder
-            => await StartRecordingStreamAsync<TEncoder>(bufferCallback, outputSampleRate, cancellationToken).ConfigureAwait(true);
+            => await StartRecordingStreamAsync<TEncoder>(bufferCallback, null, outputSampleRate, cancellationToken).ConfigureAwait(true);
+
+        /// <summary>
+        /// Starts the recording process and buffers the samples recorded back as float arrays with the sample count.
+        /// </summary>
+        /// <typeparam name="TEncoder"><see cref="IEncoder"/>.</typeparam>
+        /// <param name="sampleCallback">The buffer callback with the sample buffer and number of samples it contains.</param>
+        /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
+        /// <param name="cancellationToken">Optional, task cancellation token.</param>
+        public static async void StartRecordingStream<TEncoder>(Action<float[], int> sampleCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+            => await StartRecordingStreamAsync<TEncoder>(null, sampleCallback, outputSampleRate, cancellationToken).ConfigureAwait(true);
+
+        /// <summary>
+        /// Starts the recording process and buffers the samples recorded back as float arrays with the sample count.
+        /// </summary>
+        /// <typeparam name="TEncoder"><see cref="IEncoder"/>.</typeparam>
+        /// <param name="sampleCallback">The buffer callback with the sample buffer and number of samples it contains.</param>
+        /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
+        /// <param name="cancellationToken">Optional, task cancellation token.</param>
+        public static async Task StartRecordingStreamAsync<TEncoder>(Action<float[], int> sampleCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+            => await StartRecordingStreamAsync<TEncoder>(null, sampleCallback, outputSampleRate, cancellationToken).ConfigureAwait(true);
 
         /// <summary>
         /// Starts the recording process and buffers the samples back as <see cref="ReadOnlyMemory{Tbytes}"/>.
         /// </summary>
+        /// <typeparam name="TEncoder"><see cref="IEncoder"/>.</typeparam>
         /// <param name="bufferCallback">The buffer callback with new sample data.</param>
         /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
         public static async Task StartRecordingStreamAsync<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default) where TEncoder : IEncoder
+            => await StartRecordingStreamAsync<TEncoder>(bufferCallback, null, outputSampleRate, cancellationToken).ConfigureAwait(true);
+
+        /// <summary>
+        /// Starts the recording process and buffers the samples back as <see cref="ReadOnlyMemory{Tbytes}"/>.
+        /// </summary>
+        /// <typeparam name="TEncoder"><see cref="IEncoder"/>.</typeparam>
+        /// <param name="bufferCallback">The buffer callback with new sample data.</param>
+        /// <param name="sampleCallback">The buffer callback with the sample buffer and number of samples it contains.</param>
+        /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
+        /// <param name="cancellationToken">Optional, task cancellation token.</param>
+        public static async Task StartRecordingStreamAsync<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, Action<float[], int> sampleCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default) where TEncoder : IEncoder
         {
             if (IsBusy)
             {
@@ -400,7 +433,7 @@ namespace Utilities.Audio
                     encoderCache.TryAdd(typeof(TEncoder), encoder);
                 }
 
-                await encoder.StreamRecordingAsync(InitializeRecording(clip, outputSampleRate), bufferCallback, cancellationTokenSource.Token);
+                await encoder.StreamRecordingAsync(InitializeRecording(clip, outputSampleRate), bufferCallback, sampleCallback, cancellationTokenSource.Token);
             }
             catch (Exception e)
             {

@@ -1,5 +1,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using JetBrains.Annotations;
 using System;
 using System.IO;
 using System.Threading;
@@ -267,7 +268,7 @@ namespace Utilities.Audio
 
         /// <inheritdoc />
         [Preserve]
-        public async Task StreamRecordingAsync(ClipData clipData, Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken, string callingMethodName = null)
+        public async Task StreamRecordingAsync(ClipData clipData, Func<ReadOnlyMemory<byte>, Task> bufferCallback = null, Action<float[], int> sampleCallback = null, CancellationToken cancellationToken = default, string callingMethodName = null)
         {
             if (callingMethodName != nameof(RecordingManager.StartRecordingStreamAsync))
             {
@@ -278,7 +279,7 @@ namespace Utilities.Audio
 
             try
             {
-                await InternalStreamRecordAsync(clipData, null, bufferCallback, DefaultSampleProvider, cancellationToken).ConfigureAwait(false);
+                await InternalStreamRecordAsync(clipData, null, bufferCallback, sampleCallback, DefaultSampleProvider, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -358,7 +359,7 @@ namespace Utilities.Audio
                             await Task.Yield();
                         }
 
-                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, BufferCallback, DefaultSampleProvider, cancellationToken).ConfigureAwait(true);
+                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, BufferCallback, null, DefaultSampleProvider, cancellationToken).ConfigureAwait(true);
                     }
                     finally
                     {
@@ -421,7 +422,7 @@ namespace Utilities.Audio
             return result;
         }
 
-        internal static async Task<(float[], int)> InternalStreamRecordAsync(ClipData clipData, float[] finalSamples, Func<ReadOnlyMemory<byte>, Task> bufferCallback, ISampleProvider sampleProvider, CancellationToken cancellationToken)
+        internal static async Task<(float[], int)> InternalStreamRecordAsync(ClipData clipData, float[] finalSamples, [CanBeNull] Func<ReadOnlyMemory<byte>, Task> bufferCallback, [CanBeNull] Action<float[], int> samplesCallback, ISampleProvider sampleProvider, CancellationToken cancellationToken)
         {
             try
             {
@@ -503,7 +504,12 @@ namespace Utilities.Audio
 
                         try
                         {
-                            await bufferCallback(Encode(outputSamples, null, 0, samplesToWrite)).ConfigureAwait(false);
+                            samplesCallback?.Invoke(outputSamples, samplesToWrite);
+
+                            if (bufferCallback != null)
+                            {
+                                await bufferCallback(Encode(outputSamples, null, 0, samplesToWrite)).ConfigureAwait(false);
+                            }
                         }
                         catch (Exception e)
                         {

@@ -136,14 +136,16 @@ namespace Utilities.Audio
         }
 #endif
 
-        public async void BufferCallback(float[] samples)
-            => await BufferCallbackAsync(samples);
+        public async void BufferCallback(float[] samples, int? count = null)
+            => await BufferCallbackAsync(samples, count);
 
-        public async Task BufferCallbackAsync(float[] samples)
+        public async Task BufferCallbackAsync(float[] samples, int? count = null)
         {
-            foreach (var sample in samples)
+            count ??= samples.Length;
+
+            for (var i = 0; i < count; i++)
             {
-                audioBuffer.Enqueue(sample);
+                audioBuffer.Enqueue(samples[i]);
             }
 
             await Task.Yield();
