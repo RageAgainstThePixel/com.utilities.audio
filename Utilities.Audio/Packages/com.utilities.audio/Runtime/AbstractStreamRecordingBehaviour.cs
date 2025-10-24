@@ -38,10 +38,14 @@ namespace Utilities.Audio
         }
 
         [SerializeField]
-        private SampleRates sampleRate = SampleRates.Hz44100;
+        private SampleRates sampleRate = SampleRates.Auto;
+
+        [SerializeField]
+        private int recordingSampleRate = -1;
 
         public enum SampleRates
         {
+            Auto = 0,
             Hz16000 = 16000,
             Hz24000 = 24000,
             Hz22050 = 22050,
@@ -88,27 +92,38 @@ namespace Utilities.Audio
             {
                 if (RecordingManager.IsRecording)
                 {
+                    recordingSampleRate = -1;
                     RecordingManager.EndRecording();
                 }
                 else
                 {
                     if (!RecordingManager.IsBusy)
                     {
-                        var recordingSampleRate = (int)sampleRate;
-                        var playbackSampleRate = AudioSettings.outputSampleRate;
+                        if (recordingSampleRate <= 0)
+                        {
+                            if (sampleRate == 0)
+                            {
+                                UnityEngine.Microphone.GetDeviceCaps(RecordingManager.DefaultRecordingDevice, out _, out var max);
+                                recordingSampleRate = max;
+                            }
+                            else
+                            {
+                                recordingSampleRate = (int)sampleRate;
+                            }
+                        }
 
                         if (debug)
                         {
                             UnityEngine.Debug.Log($"recording sample rate: {recordingSampleRate}");
-                            UnityEngine.Debug.Log($"playback sample rate: {playbackSampleRate}");
+                            UnityEngine.Debug.Log($"playback sample rate: {AudioSettings.outputSampleRate}");
                         }
 
-                        async void SampleCallback(float[] samples, int i)
+                        async Task BufferCallback(ReadOnlyMemory<byte> arg)
                         {
-                            await streamAudioSource.BufferCallbackAsync(samples, i);
+                            await streamAudioSource.BufferCallbackAsync(arg, recordingSampleRate, AudioSettings.outputSampleRate);
                         }
 
-                        RecordingManager.StartRecordingStream<PCMEncoder>(SampleCallback, recordingSampleRate, destroyCancellationToken);
+                        RecordingManager.StartRecordingStream<PCMEncoder>(BufferCallback, recordingSampleRate, destroyCancellationToken);
                     }
                 }
             }

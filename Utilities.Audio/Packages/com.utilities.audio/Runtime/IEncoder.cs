@@ -15,10 +15,9 @@ namespace Utilities.Audio
         /// </summary>
         /// <param name="microphoneClipData">The microphone input clip data.</param>
         /// <param name="bufferCallback">The event raised when buffer data is ready to write.</param>
-        /// <param name="sampleCallback">The event raised when sample data is recorded. Contains the buffered array and the number of samples in the snapshot.</param>
         /// <param name="cancellationToken"><see cref="CancellationToken"/>.</param>
         /// <param name="callingMethodName">Used to determine where this method was called from.</param>
-        Task StreamRecordingAsync(ClipData microphoneClipData, Func<ReadOnlyMemory<byte>, Task> bufferCallback = null, Action<float[], int> sampleCallback = null, CancellationToken cancellationToken = default, [CallerMemberName] string callingMethodName = null);
+        Task StreamRecordingAsync(ClipData microphoneClipData, Func<ReadOnlyMemory<byte>, Task> bufferCallback = null, CancellationToken cancellationToken = default, [CallerMemberName] string callingMethodName = null);
 
         /// <summary>
         /// Streams audio microphone recording input to disk.

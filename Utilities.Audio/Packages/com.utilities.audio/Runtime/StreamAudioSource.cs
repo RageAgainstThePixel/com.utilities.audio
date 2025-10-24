@@ -136,11 +136,16 @@ namespace Utilities.Audio
         }
 #endif
 
-        public async void BufferCallback(float[] samples, int? count = null)
-            => await BufferCallbackAsync(samples, count);
+        public async void BufferCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+            => await BufferCallbackAsync(samples, count, inputSampleRate, outputSampleRate);
 
-        public async Task BufferCallbackAsync(float[] samples, int? count = null)
+        public async Task BufferCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
+            if (inputSampleRate.HasValue && outputSampleRate.HasValue && inputSampleRate != outputSampleRate)
+            {
+                samples = PCMEncoder.Resample(samples, null, inputSampleRate.Value, outputSampleRate.Value);
+            }
+
             count ??= samples.Length;
 
             for (var i = 0; i < count; i++)

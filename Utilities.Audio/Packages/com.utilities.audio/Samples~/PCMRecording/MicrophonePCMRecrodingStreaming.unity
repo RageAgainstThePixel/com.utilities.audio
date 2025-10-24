@@ -514,7 +514,7 @@ MonoBehaviour:
       m_Flags: 0
     m_Reference: {fileID: 0}
   debug: 1
-  sampleRate: 16000
+  sampleRate: 0
 --- !u!114 &545589677
 MonoBehaviour:
   m_ObjectHideFlags: 0
