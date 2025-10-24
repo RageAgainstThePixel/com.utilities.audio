@@ -359,7 +359,7 @@ namespace Utilities.Audio
                             await Task.Yield();
                         }
 
-                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, BufferCallback, null, DefaultSampleProvider, cancellationToken).ConfigureAwait(true);
+                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, BufferCallback, DefaultSampleProvider, cancellationToken).ConfigureAwait(true);
                     }
                     finally
                     {
