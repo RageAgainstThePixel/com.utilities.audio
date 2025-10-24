@@ -2,6 +2,10 @@
 
 using UnityEngine;
 
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+
 namespace Utilities.Audio
 {
     /// <summary>
@@ -14,8 +18,13 @@ namespace Utilities.Audio
         [SerializeField]
         private StreamAudioSource streamAudioSource;
 
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+        [SerializeField]
+        private InputActionProperty inputActionRef = new(new InputAction("Record", InputActionType.Button, "<Keyboard>/space"));
+#else
         [SerializeField]
         private KeyCode recordingKey = KeyCode.Space;
+#endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
 
         [SerializeField]
         private bool debug;
@@ -43,7 +52,7 @@ namespace Utilities.Audio
         private System.Threading.CancellationTokenSource lifetimeCancellationTokenSource = new();
         // ReSharper disable once InconsistentNaming
         private System.Threading.CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
-#endif
+#endif // !UNITY_2022_1_OR_NEWER
 
         private void OnValidate()
         {
@@ -60,9 +69,20 @@ namespace Utilities.Audio
             RecordingManager.EnableDebug = debug;
         }
 
+        private void OnEnable()
+        {
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+            inputActionRef.action.Enable();
+#endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+        }
+
         private void Update()
         {
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+            if (inputActionRef.action.WasPressedThisFrame())
+#else
             if (Input.GetKeyUp(recordingKey))
+#endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
             {
                 if (RecordingManager.IsRecording)
                 {
@@ -91,11 +111,18 @@ namespace Utilities.Audio
             }
         }
 
+        private void OnDisable()
+        {
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+            inputActionRef.action.Enable();
+#endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+        }
+
 #if !UNITY_2022_1_OR_NEWER
         private void OnDestroy()
         {
             lifetimeCancellationTokenSource.Cancel();
         }
-#endif
+#endif // !UNITY_2022_1_OR_NEWER
     }
 }

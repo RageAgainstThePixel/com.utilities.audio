@@ -2,7 +2,8 @@
     "name": "Utilities.Audio",
     "rootNamespace": "Utilities.Audio",
     "references": [
-        "GUID:a6609af893242c7438d701ddd4cce46a"
+        "GUID:a6609af893242c7438d701ddd4cce46a",
+        "GUID:75469ad4d38634e559750d17036d5f7c"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -11,6 +12,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "1.0.0",
+            "define": "INPUT_SYSTEM_EXISTS"
+        }
+    ],
     "noEngineReferences": false
 }
