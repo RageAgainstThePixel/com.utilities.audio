@@ -1,23 +1,24 @@
 {
-  "name": "Utilities.Audio",
-  "rootNamespace": "Utilities.Audio",
-  "references": [
-    "GUID:a6609af893242c7438d701ddd4cce46a",
-    "GUID:75469ad4d38634e559750d17036d5f7c"
-  ],
-  "includePlatforms": [],
-  "excludePlatforms": [],
-  "allowUnsafeCode": false,
-  "overrideReferences": false,
-  "precompiledReferences": [],
-  "autoReferenced": true,
-  "defineConstraints": [],
-  "versionDefines": [
-    {
-      "name": "com.unity.inputsystem",
-      "expression": "1.0.0",
-      "define": "INPUT_SYSTEM_EXISTS"
-    }
-  ],
-  "noEngineReferences": false
+    "name": "Utilities.Audio",
+    "rootNamespace": "Utilities.Audio",
+    "references": [
+        "GUID:a6609af893242c7438d701ddd4cce46a",
+        "GUID:75469ad4d38634e559750d17036d5f7c",
+        "GUID:e0cd26848372d4e5c891c569017e11f1"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "1.0.0",
+            "define": "INPUT_SYSTEM_EXISTS"
+        }
+    ],
+    "noEngineReferences": false
 }

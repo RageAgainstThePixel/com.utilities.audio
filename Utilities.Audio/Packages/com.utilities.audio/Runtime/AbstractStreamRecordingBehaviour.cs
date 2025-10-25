@@ -1,7 +1,5 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
-using System.Threading.Tasks;
 using UnityEngine;
 
 #if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
@@ -118,12 +116,10 @@ namespace Utilities.Audio
                             UnityEngine.Debug.Log($"playback sample rate: {AudioSettings.outputSampleRate}");
                         }
 
-                        async Task BufferCallback(ReadOnlyMemory<byte> arg)
+                        RecordingManager.StartRecordingStream<PCMEncoder>(async (buffer) =>
                         {
-                            await streamAudioSource.BufferCallbackAsync(arg, recordingSampleRate, AudioSettings.outputSampleRate);
-                        }
-
-                        RecordingManager.StartRecordingStream<PCMEncoder>(BufferCallback, recordingSampleRate, destroyCancellationToken);
+                            await streamAudioSource.BufferCallbackAsync(buffer, recordingSampleRate, AudioSettings.outputSampleRate);
+                        }, recordingSampleRate, destroyCancellationToken);
                     }
                 }
             }

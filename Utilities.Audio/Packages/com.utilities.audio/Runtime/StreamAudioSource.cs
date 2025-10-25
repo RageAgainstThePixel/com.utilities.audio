@@ -1,9 +1,9 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Scripting;
 
@@ -28,9 +28,11 @@ namespace Utilities.Audio
         private CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
 #endif
 
-        private readonly ConcurrentQueue<float> audioBuffer = new();
+        private NativeQueue<float> audioBuffer;
 
-        public bool IsEmpty => audioBuffer.IsEmpty;
+        private float[] resampleBuffer;
+
+        public bool IsEmpty => audioBuffer.Count == 0;
 
         private void OnValidate()
         {
@@ -42,6 +44,7 @@ namespace Utilities.Audio
 
         private void Awake()
         {
+            audioBuffer = new NativeQueue<float>(Allocator.Persistent);
             OnValidate();
 #if PLATFORM_WEBGL && !UNITY_EDITOR
             AudioPlaybackLoop();
@@ -65,6 +68,8 @@ namespace Utilities.Audio
         private async void AudioPlaybackLoop()
         {
             //Debug.Log($"Start {nameof(AudioPlaybackLoop)}");
+            EnsureAudioBufferInitialized();
+
             var audioContextPtr = AudioStream_InitPlayback(AudioSettings.outputSampleRate);
 
             try
@@ -80,6 +85,12 @@ namespace Utilities.Audio
                 {
                     //Debug.Log($"AudioStream_SetVolume::volume:{audioSource.volume}");
                     AudioStream_SetVolume(audioContextPtr, audioSource.volume);
+
+                    if (!audioBuffer.IsCreated)
+                    {
+                        await Task.Yield();
+                        continue;
+                    }
 
                     if (audioBuffer.Count >= buffer.Length)
                     {
@@ -114,7 +125,7 @@ namespace Utilities.Audio
 #else
         private void OnAudioFilterRead(float[] data, int channels)
         {
-            if (audioBuffer.Count < data.Length) { return; }
+            if (!audioBuffer.IsCreated || audioBuffer.Count < data.Length) { return; }
 
             for (var i = 0; i < data.Length; i += channels)
             {
@@ -129,12 +140,13 @@ namespace Utilities.Audio
         }
 #endif // PLATFORM_WEBGL && !UNITY_EDITOR
 
-#if !UNITY_2022_1_OR_NEWER
         private void OnDestroy()
         {
+#if !UNITY_2022_1_OR_NEWER
             lifetimeCancellationTokenSource.Cancel();
-        }
 #endif
+            audioBuffer.Dispose();
+        }
 
         public async void BufferCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
             => await BufferCallbackAsync(samples, count, inputSampleRate, outputSampleRate);
@@ -169,6 +181,8 @@ namespace Utilities.Audio
         }
 
         public void ClearBuffer()
-            => audioBuffer.Clear();
+        {
+            audioBuffer.Clear();
+        }
     }
 }
