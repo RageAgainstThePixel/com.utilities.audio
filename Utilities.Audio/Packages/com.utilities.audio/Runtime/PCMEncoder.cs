@@ -1,5 +1,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using JetBrains.Annotations;
 using System;
 using System.IO;
 using System.Threading;
@@ -267,7 +268,7 @@ namespace Utilities.Audio
 
         /// <inheritdoc />
         [Preserve]
-        public async Task StreamRecordingAsync(ClipData clipData, Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken, string callingMethodName = null)
+        public async Task StreamRecordingAsync(ClipData clipData, Func<ReadOnlyMemory<byte>, Task> bufferCallback = null, CancellationToken cancellationToken = default, string callingMethodName = null)
         {
             if (callingMethodName != nameof(RecordingManager.StartRecordingStreamAsync))
             {
@@ -503,7 +504,10 @@ namespace Utilities.Audio
 
                         try
                         {
-                            await bufferCallback(Encode(outputSamples, null, 0, samplesToWrite)).ConfigureAwait(false);
+                            if (bufferCallback != null)
+                            {
+                                await bufferCallback(Encode(outputSamples, null, 0, samplesToWrite)).ConfigureAwait(false);
+                            }
                         }
                         catch (Exception e)
                         {
