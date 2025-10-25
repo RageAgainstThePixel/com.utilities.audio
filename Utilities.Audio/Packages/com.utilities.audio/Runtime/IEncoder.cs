@@ -4,6 +4,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Collections;
 using UnityEngine;
 
 namespace Utilities.Audio
@@ -17,7 +18,7 @@ namespace Utilities.Audio
         /// <param name="bufferCallback">The event raised when buffer data is ready to write.</param>
         /// <param name="cancellationToken"><see cref="CancellationToken"/>.</param>
         /// <param name="callingMethodName">Used to determine where this method was called from.</param>
-        Task StreamRecordingAsync(ClipData microphoneClipData, Func<ReadOnlyMemory<byte>, Task> bufferCallback = null, CancellationToken cancellationToken = default, [CallerMemberName] string callingMethodName = null);
+        Task StreamRecordingAsync(ClipData microphoneClipData, Func<NativeArray<byte>, Task> bufferCallback = null, CancellationToken cancellationToken = default, [CallerMemberName] string callingMethodName = null);
 
         /// <summary>
         /// Streams audio microphone recording input to disk.

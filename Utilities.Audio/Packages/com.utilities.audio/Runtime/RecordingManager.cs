@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Collections;
 using UnityEngine;
 using Utilities.Async;
 
@@ -305,7 +306,7 @@ namespace Utilities.Audio
         }
 
         [Obsolete("use new overload with outputSampleRate")]
-        public static async void StartRecordingStream<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, CancellationToken cancellationToken)
+        public static async void StartRecordingStream<TEncoder>(Func<NativeArray<byte>, Task> bufferCallback, CancellationToken cancellationToken)
             where TEncoder : IEncoder
             => await StartRecordingStreamAsync<TEncoder>(bufferCallback, 44100, cancellationToken).ConfigureAwait(true);
 
@@ -316,7 +317,7 @@ namespace Utilities.Audio
         /// <param name="bufferCallback">The buffer callback with new sample data.</param>
         /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async void StartRecordingStream<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default)
+        public static async void StartRecordingStream<TEncoder>(Func<NativeArray<byte>, Task> bufferCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default)
             where TEncoder : IEncoder
             => await StartRecordingStreamAsync<TEncoder>(bufferCallback, outputSampleRate, cancellationToken).ConfigureAwait(true);
 
@@ -327,7 +328,7 @@ namespace Utilities.Audio
         /// <param name="bufferCallback">The buffer callback with new sample data.</param>
         /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
-        public static async Task StartRecordingStreamAsync<TEncoder>(Func<ReadOnlyMemory<byte>, Task> bufferCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default)
+        public static async Task StartRecordingStreamAsync<TEncoder>(Func<NativeArray<byte>, Task> bufferCallback, int outputSampleRate = 44100, CancellationToken cancellationToken = default)
             where TEncoder : IEncoder
         {
             if (IsBusy)

@@ -64,7 +64,7 @@ namespace Utilities.Audio.Tests
         public void Test_00_02_Resample_SameSampleRate_ReturnsOriginalSamples()
         {
             float[] samples = { 0.1f, 0.2f, 0.3f };
-            var result = PCMEncoder.Resample(samples, null, k_44100, k_44100);
+            var result = PCMEncoder.Resample(samples, k_44100, k_44100);
             Assert.AreEqual(samples, result);
         }
 
@@ -73,7 +73,7 @@ namespace Utilities.Audio.Tests
         {    // Test case 1
             float[] samples1 = { 0.1f, 0.2f, 0.3f, 0.4f };
 
-            var result1 = PCMEncoder.Resample(samples1, null, k_44100, k_24000);
+            var result1 = PCMEncoder.Resample(samples1, k_44100, k_24000);
             Debug.Log($"result1: [{string.Join(',', result1)}]");
             Assert.AreEqual(2, result1.Length);
             Assert.AreEqual(0.1f, result1[0], Tolerance);
@@ -88,7 +88,7 @@ namespace Utilities.Audio.Tests
             // Test case 2
             float[] samples2 = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 
-            var result2 = PCMEncoder.Resample(samples2, null, k_48000, k_16000);
+            var result2 = PCMEncoder.Resample(samples2, k_48000, k_16000);
             Debug.Log($"result2: [{string.Join(',', result2)}]");
             Assert.AreEqual(3, result2.Length);
             Assert.AreEqual(0.1f, result2[0], Tolerance);
@@ -104,7 +104,7 @@ namespace Utilities.Audio.Tests
             // Test case 3
             float[] samples3 = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
 
-            var result3 = PCMEncoder.Resample(samples3, null, k_44100, k_22050);
+            var result3 = PCMEncoder.Resample(samples3, k_44100, k_22050);
             Debug.Log($"result3: [{string.Join(',', result3)}]");
             Assert.AreEqual(5, result3.Length);
             Assert.AreEqual(0.1f, result3[0], Tolerance);
@@ -122,7 +122,7 @@ namespace Utilities.Audio.Tests
             // Test case 4
             float[] samples4 = { 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
 
-            var result4 = PCMEncoder.Resample(samples4, null, k_16000, k_96000);
+            var result4 = PCMEncoder.Resample(samples4, k_16000, k_96000);
             Debug.Log($"result4: [{string.Join(',', result4)}]");
             Assert.AreEqual(60, result4.Length);
             Assert.AreEqual(0.1f, result4[0], Tolerance);
@@ -144,24 +144,11 @@ namespace Utilities.Audio.Tests
         }
 
         [Test]
-        public void Test_00_04_Resample_WithBuffer_UsesProvidedBuffer()
-        {
-            float[] samples = { 0.1f, 0.2f, 0.3f, 0.4f };
-            var buffer = new float[2];
-
-            var result = PCMEncoder.Resample(samples, buffer, k_44100, k_24000);
-
-            Assert.AreEqual(buffer, result);
-            Assert.AreEqual(0.1f, buffer[0], Tolerance);
-            Assert.AreEqual(0.3f, buffer[1], Tolerance);
-        }
-
-        [Test]
         public void Test_00_05_Resample_EmptySamples_ReturnsEmptyBuffer()
         {
             float[] samples = { };
 
-            var result = PCMEncoder.Resample(samples, null, k_44100, k_24000);
+            var result = PCMEncoder.Resample(samples, k_44100, k_24000);
 
             Assert.AreEqual(0, result.Length);
         }
@@ -171,7 +158,7 @@ namespace Utilities.Audio.Tests
         {
             float[] samples = { 0.1f };
 
-            var result = PCMEncoder.Resample(samples, null, k_44100, k_24000);
+            var result = PCMEncoder.Resample(samples, k_44100, k_24000);
 
             Assert.AreEqual(1, result.Length);
             Assert.AreEqual(0.1f, result[0], Tolerance);
@@ -186,7 +173,7 @@ namespace Utilities.Audio.Tests
                 samples[i] = (float)i / samples.Length;
             }
 
-            var result = PCMEncoder.Resample(samples, null, k_44100, k_24000);
+            var result = PCMEncoder.Resample(samples, k_44100, k_24000);
 
             Assert.AreEqual(24000, result.Length);
             Assert.AreEqual(0f, result[0], Tolerance);
@@ -205,7 +192,7 @@ namespace Utilities.Audio.Tests
                 samples[i] = (float)i / samples.Length;
             }
 
-            var result = PCMEncoder.Resample(samples, null, k_16000, k_96000);
+            var result = PCMEncoder.Resample(samples, k_16000, k_96000);
 
             Assert.AreEqual(k_96000, result.Length);
             Assert.AreEqual(0f, result[0], Tolerance);
@@ -224,7 +211,7 @@ namespace Utilities.Audio.Tests
                 testSamples[i] = (float)i / testSamples.Length;
             }
 
-            var downSample = PCMEncoder.Resample(testSamples, null, k_44100, k_24000);
+            var downSample = PCMEncoder.Resample(testSamples, k_44100, k_24000);
 
             Assert.AreEqual(24000, downSample.Length);
             Assert.AreEqual(0f, downSample[0], Tolerance);
@@ -233,7 +220,7 @@ namespace Utilities.Audio.Tests
             Assert.AreEqual(0.75f, downSample[18000], Tolerance);
             Assert.AreEqual(1f, downSample[23999], Tolerance);
 
-            var upSample = PCMEncoder.Resample(downSample, null, k_24000, k_44100);
+            var upSample = PCMEncoder.Resample(downSample, k_24000, k_44100);
 
             Assert.AreEqual(44100, upSample.Length);
             Assert.AreEqual(0f, upSample[0], Tolerance);
@@ -290,7 +277,7 @@ namespace Utilities.Audio.Tests
         public void Test_01_03_PCM_Encode_8Bit_Resampled()
         {
             var originalSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, k_44100);
-            var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_44100, k_24000);
+            var resampledSamples = PCMEncoder.Resample(originalSamples, k_44100, k_24000);
 
             var encodedBytes = PCMEncoder.Encode(resampledSamples, PCMFormatSize.EightBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.EightBit);
@@ -351,7 +338,7 @@ namespace Utilities.Audio.Tests
         public void Test_02_03_PCM_Encode_16Bit_Resampled()
         {
             var originalSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, k_48000);
-            var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_48000, k_44100);
+            var resampledSamples = PCMEncoder.Resample(originalSamples, k_48000, k_44100);
 
             var encodedBytes = PCMEncoder.Encode(resampledSamples, PCMFormatSize.SixteenBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.SixteenBit);
@@ -412,7 +399,7 @@ namespace Utilities.Audio.Tests
         public void Test_03_03_PCM_Encode_24Bit_Resampled()
         {
             var originalSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, k_44100);
-            var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_44100, k_24000);
+            var resampledSamples = PCMEncoder.Resample(originalSamples, k_44100, k_24000);
 
             var encodedBytes = PCMEncoder.Encode(resampledSamples, PCMFormatSize.TwentyFourBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.TwentyFourBit);
@@ -473,7 +460,7 @@ namespace Utilities.Audio.Tests
         public void Test_04_03_PCM_Encode_32Bit_Resampled()
         {
             var originalSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, k_44100);
-            var resampledSamples = PCMEncoder.Resample(originalSamples, null, k_44100, k_24000);
+            var resampledSamples = PCMEncoder.Resample(originalSamples, k_44100, k_24000);
 
             var encodedBytes = PCMEncoder.Encode(resampledSamples, PCMFormatSize.ThirtyTwoBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.ThirtyTwoBit);

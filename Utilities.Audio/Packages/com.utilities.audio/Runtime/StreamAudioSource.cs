@@ -1,6 +1,5 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Collections;
@@ -155,7 +154,7 @@ namespace Utilities.Audio
         {
             if (inputSampleRate.HasValue && outputSampleRate.HasValue && inputSampleRate != outputSampleRate)
             {
-                samples = PCMEncoder.Resample(samples, null, inputSampleRate.Value, outputSampleRate.Value);
+                samples = PCMEncoder.Resample(samples, inputSampleRate.Value, outputSampleRate.Value);
             }
 
             count ??= samples.Length;
@@ -168,9 +167,9 @@ namespace Utilities.Audio
             await Task.Yield();
         }
 
-        public async Task BufferCallbackAsync(ReadOnlyMemory<byte> audioData, int inputSampleRate, int outputSampleRate)
+        public async Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
         {
-            var samples = PCMEncoder.Decode(audioData.ToArray(), inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate);
+            var samples = PCMEncoder.Decode(pcmData, inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate);
 
             foreach (var sample in samples)
             {
