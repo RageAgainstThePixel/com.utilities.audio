@@ -31,8 +31,21 @@ namespace Utilities.Audio
                 {
                     samples = PCMEncoder.Resample(samples, audioClip.frequency, outputSampleRate);
                 }
+#if !UNITY_6000_0_OR_NEWER
+                var nativeSamples = new NativeArray<float>(samples, Allocator.Temp);
 
+                try
+                {
+                    return PCMEncoder.Encode(nativeSamples, size, trim);
+                }
+                finally
+                {
+                    nativeSamples.Dispose();
+                }
+#else
                 return PCMEncoder.Encode(samples, size, trim);
+#endif
+
             }
             finally
             {
