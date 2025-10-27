@@ -1,5 +1,8 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using System;
+using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 using Utilities.Audio;
 
@@ -16,7 +19,7 @@ namespace Utilities.Encoder.PCM.Samples.Recording
         [SerializeField]
         private StreamAudioSource streamAudioSource;
 
-        private float[] sampleBuffer;
+        private NativeArray<float> sampleBuffer;
 
         private float lastTimestamp;
 
@@ -31,23 +34,25 @@ namespace Utilities.Encoder.PCM.Samples.Recording
         private void Awake()
         {
             OnValidate();
-            sampleBuffer = new float[AudioSettings.outputSampleRate];
-
+            sampleBuffer = new NativeArray<float>(AudioSettings.outputSampleRate, Allocator.Persistent);
             for (var i = 0; i < sampleBuffer.Length; i++)
             {
-                sampleBuffer[i] = Mathf.Sin(2 * Mathf.PI * 440 * i / AudioSettings.outputSampleRate);
+                sampleBuffer[i] = math.sin(2 * Mathf.PI * 440 * i / AudioSettings.outputSampleRate);
             }
         }
 
         private void Update()
         {
-            // we will do slightly less than a second
-            // to make sure the buffer isn't lagging behind
             if (Time.time - lastTimestamp >= .9f)
             {
                 lastTimestamp = Time.time;
                 streamAudioSource.BufferCallback(sampleBuffer);
             }
+        }
+
+        private void OnDestroy()
+        {
+            sampleBuffer.Dispose();
         }
     }
 }

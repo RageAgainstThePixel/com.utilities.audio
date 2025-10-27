@@ -38,10 +38,13 @@ namespace Utilities.Audio
         }
 
         [SerializeField]
-        private SampleRates sampleRate = SampleRates.Hz44100;
+        private SampleRates sampleRate = SampleRates.Auto;
+
+        private int recordingSampleRate = -1;
 
         public enum SampleRates
         {
+            Auto = 0,
             Hz16000 = 16000,
             Hz24000 = 24000,
             Hz22050 = 22050,
@@ -101,6 +104,7 @@ namespace Utilities.Audio
             {
                 if (RecordingManager.IsRecording)
                 {
+                    recordingSampleRate = -1;
                     RecordingManager.EndRecording();
                 }
                 else
@@ -130,6 +134,8 @@ namespace Utilities.Audio
 
         private void OnClipRecorded(Tuple<string, AudioClip> recording)
         {
+            recordingSampleRate = -1;
+
             var (path, newClip) = recording;
 
             if (debug)
@@ -159,8 +165,20 @@ namespace Utilities.Audio
 
             try
             {
+                if (sampleRate == SampleRates.Auto)
+                {
+                    UnityEngine.Microphone.GetDeviceCaps(RecordingManager.DefaultRecordingDevice, out _, out var max);
+                    recordingSampleRate = max;
+                }
+                else
+                {
+                    recordingSampleRate = (int)sampleRate;
+                }
+
                 // Starts the recording process
-                var (path, newClip) = await RecordingManager.StartRecordingAsync<TEncoder>(outputSampleRate: (int)sampleRate, cancellationToken: destroyCancellationToken);
+                var (path, newClip) = await RecordingManager.StartRecordingAsync<TEncoder>(
+                    outputSampleRate: (int)sampleRate,
+                    cancellationToken: destroyCancellationToken);
 
                 if (debug)
                 {

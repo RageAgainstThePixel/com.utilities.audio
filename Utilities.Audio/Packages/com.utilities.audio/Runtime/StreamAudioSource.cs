@@ -1,10 +1,15 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using JetBrains.Annotations;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Scripting;
+
+#if PLATFORM_WEBGL && !UNITY_EDITOR
+using System;
+#endif // PLATFORM_WEBGL && !UNITY_EDITOR
 
 namespace Utilities.Audio
 {
@@ -25,7 +30,7 @@ namespace Utilities.Audio
         private CancellationTokenSource lifetimeCancellationTokenSource = new();
         // ReSharper disable once InconsistentNaming
         private CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
-#endif
+#endif // !UNITY_2022_1_OR_NEWER
 
         private NativeQueue<float> audioBuffer;
 
@@ -67,9 +72,9 @@ namespace Utilities.Audio
         private async void AudioPlaybackLoop()
         {
             //Debug.Log($"Start {nameof(AudioPlaybackLoop)}");
-            EnsureAudioBufferInitialized();
 
             var audioContextPtr = AudioStream_InitPlayback(AudioSettings.outputSampleRate);
+            var buffer = new float[AudioSettings.outputSampleRate];
 
             try
             {
@@ -78,34 +83,28 @@ namespace Utilities.Audio
                     throw new Exception("Failed to initialize a new audio context!");
                 }
 
-                var buffer = new float[AudioSettings.outputSampleRate];
-
                 while (!destroyCancellationToken.IsCancellationRequested)
                 {
                     //Debug.Log($"AudioStream_SetVolume::volume:{audioSource.volume}");
                     AudioStream_SetVolume(audioContextPtr, audioSource.volume);
 
-                    if (!audioBuffer.IsCreated)
-                    {
-                        await Task.Yield();
-                        continue;
-                    }
+                    var bufferLength = buffer.Length;
 
-                    if (audioBuffer.Count >= buffer.Length)
+                    if (audioBuffer.Count >= bufferLength)
                     {
-                        var bufferLength = 0;
+                        var count = 0;
 
-                        for (int i = 0; i < buffer.Length; i++)
+                        for (var i = 0; i < bufferLength; i++)
                         {
                             if (audioBuffer.TryDequeue(out var sample))
                             {
                                 buffer[i] = sample;
-                                bufferLength++;
+                                count++;
                             }
                         }
 
-                        //Debug.Log($"AudioStream_AppendBufferPlayback::bufferLength:{bufferLength}");
-                        AudioStream_AppendBufferPlayback(audioContextPtr, buffer, bufferLength);
+                        //Debug.Log($"AudioStream_AppendBufferPlayback::bufferLength:{count}");
+                        AudioStream_AppendBufferPlayback(audioContextPtr, buffer, count);
                     }
 
                     await Task.Yield();
@@ -118,7 +117,6 @@ namespace Utilities.Audio
             finally
             {
                 AudioStream_Dispose(audioContextPtr);
-                audioContextPtr = IntPtr.Zero;
             }
         }
 #else
@@ -143,14 +141,31 @@ namespace Utilities.Audio
         {
 #if !UNITY_2022_1_OR_NEWER
             lifetimeCancellationTokenSource.Cancel();
-#endif
+#endif // !UNITY_2022_1_OR_NEWER
             audioBuffer.Dispose();
         }
 
         public async void BufferCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+            => await BufferCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(false);
+
+        public Task BufferCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        {
+            var nativeSamples = new NativeArray<float>(samples, Allocator.Temp);
+
+            try
+            {
+                return BufferCallbackAsync(nativeSamples, count, inputSampleRate, outputSampleRate);
+            }
+            finally
+            {
+                nativeSamples.Dispose();
+            }
+        }
+
+        public async void BufferCallback(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
             => await BufferCallbackAsync(samples, count, inputSampleRate, outputSampleRate);
 
-        public async Task BufferCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        public async Task BufferCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
             if (inputSampleRate.HasValue && outputSampleRate.HasValue && inputSampleRate != outputSampleRate)
             {
@@ -170,15 +185,17 @@ namespace Utilities.Audio
         public async Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
         {
             var samples = PCMEncoder.Decode(pcmData, inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate);
+            var count = samples.Length;
 
-            foreach (var sample in samples)
+            for (var i = 0; i < count; i++)
             {
-                audioBuffer.Enqueue(sample);
+                audioBuffer.Enqueue(samples[i]);
             }
 
             await Task.Yield();
         }
 
+        [UsedImplicitly]
         public void ClearBuffer()
         {
             audioBuffer.Clear();

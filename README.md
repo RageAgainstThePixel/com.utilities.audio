@@ -55,8 +55,8 @@ On its own this package doesn't do too much but provide base functionality for r
 - [Audio Streaming Behaviour](#audio-streaming-behaviour)
 - [Audio Reactive Example](#audio-reactive-example) :new:
 - [Audio Clip Extensions](#audio-clip-extensions)
-  - [Encode PCM](#encode-pcm)
-  - [Decode PCM](#decode-pcm)
+  - [Encode PCM](#encode-pcm-to-bytes)
+  - [Decode PCM](#decode-pcm-from-bytes)
 - [IEncoder](#iencoder)
 
 ## Encoder Packages
@@ -112,14 +112,14 @@ This example uses `OnAudioFilterRead` to get the audio data from the `StreamAudi
 Provides extensions to encode `AudioClip`s to PCM encoded bytes.
 Supports 8, 16, 24, and 32 bit sample sizes.
 
-### Encode PCM
+### Encode PCM to bytes
 
 ```csharp
 // Encodes the audioClip to raw PCM bytes.
-var pcmBytes = audioClip.EncodeToPCM();
+NativeArray<byte> pcmBytes = audioClip.EncodeToPCM();
 ```
 
-### Decode PCM
+### Decode PCM from bytes
 
 ```csharp
 // Decodes the raw PCM byte data and sets it to the audioClip.

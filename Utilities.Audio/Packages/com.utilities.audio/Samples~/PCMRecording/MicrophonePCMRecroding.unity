@@ -401,7 +401,7 @@ MonoBehaviour:
       m_Flags: 0
     m_Reference: {fileID: 0}
   debug: 1
-  sampleRate: 44100
+  sampleRate: 0
 --- !u!82 &545589674
 AudioSource:
   m_ObjectHideFlags: 0
