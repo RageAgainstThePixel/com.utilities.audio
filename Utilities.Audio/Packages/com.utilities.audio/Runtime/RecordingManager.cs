@@ -436,8 +436,6 @@ namespace Utilities.Audio
                     isRecording = false;
                     isProcessing = false;
                 }
-
-                await Awaiters.UnityMainThread;
             }
         }
 
