@@ -38,7 +38,6 @@ namespace Utilities.Audio
         [SerializeField]
         private SampleRates sampleRate = SampleRates.Auto;
 
-        [SerializeField]
         private int recordingSampleRate = -1;
 
         public enum SampleRates
@@ -116,7 +115,7 @@ namespace Utilities.Audio
                             UnityEngine.Debug.Log($"playback sample rate: {AudioSettings.outputSampleRate}");
                         }
 
-                        RecordingManager.StartRecordingStream<PCMEncoder>(async (buffer) =>
+                        RecordingManager.StartRecordingStream<PCMEncoder>(async buffer =>
                         {
                             await streamAudioSource.BufferCallbackAsync(buffer, recordingSampleRate, AudioSettings.outputSampleRate);
                         }, recordingSampleRate, destroyCancellationToken);
