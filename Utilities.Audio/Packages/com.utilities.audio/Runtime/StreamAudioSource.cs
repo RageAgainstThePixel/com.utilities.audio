@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Scripting;
 
@@ -145,16 +146,16 @@ namespace Utilities.Audio
             audioBuffer.Dispose();
         }
 
-        public async void BufferCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
-            => await BufferCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(false);
+        public void SampleCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+            => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(false);
 
-        public Task BufferCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        public Task SampleCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
             var nativeSamples = new NativeArray<float>(samples, Allocator.Temp);
 
             try
             {
-                return BufferCallbackAsync(nativeSamples, count, inputSampleRate, outputSampleRate);
+                return SampleCallbackAsync(nativeSamples, count, inputSampleRate, outputSampleRate);
             }
             finally
             {
@@ -162,10 +163,10 @@ namespace Utilities.Audio
             }
         }
 
-        public async void BufferCallback(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
-            => await BufferCallbackAsync(samples, count, inputSampleRate, outputSampleRate);
+        public void SampleCallback(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+            => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(false);
 
-        public async Task BufferCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        public Task SampleCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
             if (inputSampleRate.HasValue && outputSampleRate.HasValue && inputSampleRate != outputSampleRate)
             {
@@ -173,32 +174,27 @@ namespace Utilities.Audio
             }
 
             count ??= samples.Length;
-
-            for (var i = 0; i < count; i++)
-            {
-                audioBuffer.Enqueue(samples[i]);
-            }
-
-            await Task.Yield();
+            return Enqueue(samples, count.Value);
         }
 
-        public async Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
+        public Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
         {
             var samples = PCMEncoder.Decode(pcmData, inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate);
-            var count = samples.Length;
+            return Enqueue(samples, samples.Length);
+        }
 
+        private Task Enqueue(NativeArray<float> samples, int count)
+        {
             for (var i = 0; i < count; i++)
             {
                 audioBuffer.Enqueue(samples[i]);
             }
 
-            await Task.Yield();
+            return Task.CompletedTask;
         }
 
         [UsedImplicitly]
         public void ClearBuffer()
-        {
-            audioBuffer.Clear();
-        }
+            => audioBuffer.Clear();
     }
 }

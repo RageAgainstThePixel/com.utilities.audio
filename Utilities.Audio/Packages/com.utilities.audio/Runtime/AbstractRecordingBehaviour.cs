@@ -165,19 +165,22 @@ namespace Utilities.Audio
 
             try
             {
-                if (sampleRate == SampleRates.Auto)
+                if (recordingSampleRate <= 0)
                 {
-                    UnityEngine.Microphone.GetDeviceCaps(RecordingManager.DefaultRecordingDevice, out _, out var max);
-                    recordingSampleRate = max;
-                }
-                else
-                {
-                    recordingSampleRate = (int)sampleRate;
+                    if (sampleRate == 0)
+                    {
+                        UnityEngine.Microphone.GetDeviceCaps(RecordingManager.DefaultRecordingDevice, out _, out var max);
+                        recordingSampleRate = max;
+                    }
+                    else
+                    {
+                        recordingSampleRate = (int)sampleRate;
+                    }
                 }
 
                 // Starts the recording process
                 var (path, newClip) = await RecordingManager.StartRecordingAsync<TEncoder>(
-                    outputSampleRate: (int)sampleRate,
+                    outputSampleRate: recordingSampleRate,
                     cancellationToken: destroyCancellationToken);
 
                 if (debug)

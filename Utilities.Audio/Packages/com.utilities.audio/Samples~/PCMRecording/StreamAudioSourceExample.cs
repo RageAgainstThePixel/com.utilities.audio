@@ -46,7 +46,7 @@ namespace Utilities.Encoder.PCM.Samples.Recording
             if (Time.time - lastTimestamp >= .9f)
             {
                 lastTimestamp = Time.time;
-                streamAudioSource.BufferCallback(sampleBuffer);
+                streamAudioSource.SampleCallback(sampleBuffer);
             }
         }
 

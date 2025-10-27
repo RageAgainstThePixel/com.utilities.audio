@@ -318,8 +318,8 @@ namespace Utilities.Audio
             for (var i = 0; i < resampledLength; i++)
             {
                 var index = i / ratio;
-                var floor = math.clamp(Mathf.FloorToInt(index), 0, samplesLength - 1);
-                var ceil = math.clamp(Mathf.CeilToInt(index), 0, samplesLength - 1);
+                var floor = math.clamp((int)math.floor(index), 0, samplesLength - 1);
+                var ceil = math.clamp((int)math.ceil(index), 0, samplesLength - 1);
                 buffer[i] = math.lerp(samples[floor], samples[ceil], index - floor);
             }
 
@@ -328,7 +328,12 @@ namespace Utilities.Audio
 
         /// <inheritdoc />
         [Preserve]
-        public async Task StreamRecordingAsync(ClipData clipData, Func<NativeArray<byte>, Task> bufferCallback = null, CancellationToken cancellationToken = default, string callingMethodName = null)
+        public async Task StreamRecordingAsync(
+            ClipData clipData,
+            Func<NativeArray<byte>, Task> bufferCallback = null,
+            Action<NativeArray<float>, int> sampleCallback = null,
+            CancellationToken cancellationToken = default,
+            string callingMethodName = null)
         {
             if (callingMethodName != nameof(RecordingManager.StartRecordingStreamAsync))
             {
@@ -339,7 +344,7 @@ namespace Utilities.Audio
 
             try
             {
-                await InternalStreamRecordAsync(clipData, null, bufferCallback, DefaultSampleProvider, cancellationToken).ConfigureAwait(false);
+                await InternalStreamRecordAsync(clipData, null, bufferCallback, sampleCallback, DefaultSampleProvider, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -367,7 +372,12 @@ namespace Utilities.Audio
 
         /// <inheritdoc />
         [Preserve]
-        public async Task<Tuple<string, AudioClip>> StreamSaveToDiskAsync(ClipData clipData, string saveDirectory, Action<Tuple<string, AudioClip>> callback, CancellationToken cancellationToken, string callingMethodName = null)
+        public async Task<Tuple<string, AudioClip>> StreamSaveToDiskAsync(
+            ClipData clipData,
+            string saveDirectory,
+            Action<Tuple<string, AudioClip>> callback,
+            CancellationToken cancellationToken,
+            string callingMethodName = null)
         {
             if (callingMethodName != nameof(RecordingManager.StartRecordingAsync))
             {
@@ -419,7 +429,7 @@ namespace Utilities.Audio
                             await Task.Yield();
                         }
 
-                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, BufferCallback, DefaultSampleProvider, cancellationToken).ConfigureAwait(true);
+                        (finalSamples, totalSampleCount) = await InternalStreamRecordAsync(clipData, finalSamples, BufferCallback, null, DefaultSampleProvider, cancellationToken).ConfigureAwait(true);
                     }
                     finally
                     {
@@ -482,7 +492,13 @@ namespace Utilities.Audio
             return result;
         }
 
-        internal static async Task<(float[], int)> InternalStreamRecordAsync(ClipData clipData, float[] finalSamples, Func<NativeArray<byte>, Task> bufferCallback, ISampleProvider sampleProvider, CancellationToken cancellationToken)
+        internal static async Task<(float[], int)> InternalStreamRecordAsync(
+            ClipData clipData,
+            float[] finalSamples,
+            Func<NativeArray<byte>, Task> bufferCallback,
+            Action<NativeArray<float>, int> sampleCallback,
+            ISampleProvider sampleProvider,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -566,6 +582,8 @@ namespace Utilities.Audio
 
                             try
                             {
+                                sampleCallback?.Invoke(outputSamples, samplesToWrite);
+
                                 if (bufferCallback != null)
                                 {
                                     await bufferCallback(Encode(outputSamples, 0, samplesToWrite)).ConfigureAwait(false);
@@ -599,6 +617,7 @@ namespace Utilities.Audio
                 }
                 finally
                 {
+                    Debug.Log("Cleaning up buffer");
                     outputSamples.Dispose();
                 }
             }

@@ -115,10 +115,10 @@ namespace Utilities.Audio
                             UnityEngine.Debug.Log($"playback sample rate: {AudioSettings.outputSampleRate}");
                         }
 
-                        RecordingManager.StartRecordingStream<PCMEncoder>(async buffer =>
-                        {
-                            await streamAudioSource.BufferCallbackAsync(buffer, recordingSampleRate, AudioSettings.outputSampleRate);
-                        }, recordingSampleRate, destroyCancellationToken);
+                        RecordingManager.StartRecordingStream<PCMEncoder>(
+                            (samples, count) => streamAudioSource.SampleCallback(samples, count),
+                            recordingSampleRate,
+                            destroyCancellationToken);
                     }
                 }
             }
