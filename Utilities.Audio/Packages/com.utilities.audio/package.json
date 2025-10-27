@@ -17,12 +17,12 @@
     "url": "https://github.com/StephenHodgson"
   },
   "dependencies": {
-    "com.unity.modules.androidjni": "1.0.0",
-    "com.unity.modules.audio": "1.0.0",
-    "com.unity.modules.unitywebrequestaudio": "1.0.0",
     "com.utilities.async": "2.3.2",
+    "com.utilities.extensions": "1.3.3",
+    "com.unity.modules.androidjni": "1.0.0",
     "com.unity.collections": "1.2.4",
-    "com.utilities.extensions": "1.3.3"
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.unitywebrequestaudio": "1.0.0"
   },
   "samples": [
     {
