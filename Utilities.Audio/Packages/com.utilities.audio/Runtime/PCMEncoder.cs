@@ -2,6 +2,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Collections;
@@ -34,18 +35,7 @@ namespace Utilities.Audio
         /// <param name="outputSampleRate"></param>
         /// <returns>Byte array PCM data.</returns>
         public static byte[] Encode(float[] samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f, int? inputSampleRate = null, int? outputSampleRate = null)
-        {
-            var nativeSamples = new NativeArray<float>(samples, Allocator.Temp);
-            try
-            {
-                var encodedData = Encode(nativeSamples, size, trim, silenceThreshold, inputSampleRate, outputSampleRate);
-                return encodedData.ToArray();
-            }
-            finally
-            {
-                nativeSamples.Dispose();
-            }
-        }
+            => Encode(new NativeArray<float>(samples, Allocator.Temp), size, trim, silenceThreshold, inputSampleRate, outputSampleRate).ToArray();
 
         /// <summary>
         /// Encodes the <see cref="samples"/> to raw pcm bytes.
@@ -56,9 +46,10 @@ namespace Utilities.Audio
         /// <param name="silenceThreshold">Optional, silence threshold to use for trimming operations.</param>
         /// <param name="inputSampleRate"></param>
         /// <param name="outputSampleRate"></param>
+        /// <param name="allocator"></param>
         /// <returns>Byte array PCM data.</returns>
         [Preserve]
-        public static NativeArray<byte> Encode(NativeArray<float> samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f, int? inputSampleRate = null, int? outputSampleRate = null)
+        public static NativeArray<byte> Encode(NativeArray<float> samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f, int? inputSampleRate = null, int? outputSampleRate = null, Allocator allocator = Allocator.Temp)
         {
             if (inputSampleRate.HasValue && outputSampleRate.HasValue)
             {
@@ -102,17 +93,17 @@ namespace Utilities.Audio
                 }
             }
 
-            return Encode(samples, start, length, size);
+            return Encode(samples, start, length, size, allocator);
         }
 
         [Preserve]
-        internal static NativeArray<byte> Encode(NativeArray<float> samples, int? start = null, int? sampleLength = null, PCMFormatSize size = PCMFormatSize.SixteenBit)
+        internal static NativeArray<byte> Encode(NativeArray<float> samples, int? start = null, int? sampleLength = null, PCMFormatSize size = PCMFormatSize.SixteenBit, Allocator allocator = Allocator.Temp)
         {
             start ??= 0;
             sampleLength ??= samples.Length;
             var end = sampleLength + start;
             var bufferLength = (int)sampleLength * (int)size;
-            var output = new NativeArray<byte>(bufferLength, Allocator.Temp);
+            var output = new NativeArray<byte>(bufferLength, allocator);
 
             // Ensuring samples are within [-1,1] range
             for (var i = 0; i < sampleLength; i++)
@@ -189,16 +180,7 @@ namespace Utilities.Audio
                 Array.Resize(ref pcmData, pcmData.Length - pcmData.Length % (int)size);
             }
 
-            var nativePcmData = new NativeArray<byte>(pcmData, Allocator.Temp);
-
-            try
-            {
-                return Decode(nativePcmData, size, inputSampleRate, outputSampleRate).ToArray();
-            }
-            finally
-            {
-                nativePcmData.Dispose();
-            }
+            return Decode(new NativeArray<byte>(pcmData, Allocator.Temp), size, inputSampleRate, outputSampleRate).ToArray();
         }
 
         /// <summary>
@@ -206,11 +188,12 @@ namespace Utilities.Audio
         /// </summary>
         /// <param name="pcmData">PCM data to decode.</param>
         /// <param name="size">Size of PCM sample data.</param>
-        /// <param name="inputSampleRate"></param>
-        /// <param name="outputSampleRate"></param>
+        /// <param name="inputSampleRate">The input sample rate of the data.</param>
+        /// <param name="outputSampleRate">The output sample rate to play back the data.</param>
+        /// <param name="allocator"><see cref="Allocator"/>.</param>
         /// <returns>Float array of samples.</returns>
         [Preserve]
-        public static NativeArray<float> Decode(NativeArray<byte> pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit, int? inputSampleRate = null, int? outputSampleRate = null)
+        public static NativeArray<float> Decode(NativeArray<byte> pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit, int? inputSampleRate = null, int? outputSampleRate = null, Allocator allocator = Allocator.Temp)
         {
             if (pcmData.Length % (int)size != 0)
             {
@@ -218,7 +201,7 @@ namespace Utilities.Audio
             }
 
             var sampleCount = pcmData.Length / (int)size;
-            var samples = new NativeArray<float>(sampleCount, Allocator.Temp);
+            var samples = new NativeArray<float>(sampleCount, allocator);
             var sampleIndex = 0;
 
             switch (size)
@@ -265,7 +248,7 @@ namespace Utilities.Audio
 
             if (inputSampleRate.HasValue && outputSampleRate.HasValue)
             {
-                samples = Resample(samples, inputSampleRate.Value, outputSampleRate.Value);
+                samples = Resample(samples, inputSampleRate.Value, outputSampleRate.Value, allocator);
             }
             else if (inputSampleRate.HasValue || outputSampleRate.HasValue)
             {
@@ -288,32 +271,30 @@ namespace Utilities.Audio
         [Preserve]
         public static float[] Resample(float[] samples, int inputSampleRate, int outputSampleRate)
         {
-            if (inputSampleRate == outputSampleRate)
-            {
-                return samples;
-            }
-
-            var nativeSamples = new NativeArray<float>(samples, Allocator.Temp);
-
-            try
-            {
-                return Resample(nativeSamples, inputSampleRate, outputSampleRate).ToArray();
-            }
-            finally
-            {
-                nativeSamples.Dispose();
-            }
+            if (inputSampleRate == outputSampleRate) { return samples; }
+            return Resample(new NativeArray<float>(samples, Allocator.Temp), inputSampleRate, outputSampleRate).ToArray();
         }
 
+        /// <summary>
+        /// Resample the sample data to the specified sampling rate.
+        /// </summary>
+        /// <remarks>
+        /// Uses simple linear interpolation.
+        /// </remarks>
+        /// <param name="samples">Samples to resample.</param>
+        /// <param name="inputSampleRate">The sampling rate of the samples provided.</param>
+        /// <param name="outputSampleRate">The target sampling rate to resample to.</param>
+        /// <param name="allocator"></param>
+        /// <returns>Float array of samples at specified output sampling rate.</returns>
         [Preserve]
-        public static NativeArray<float> Resample(NativeArray<float> samples, int inputSampleRate, int outputSampleRate)
+        public static NativeArray<float> Resample(NativeArray<float> samples, int inputSampleRate, int outputSampleRate, Allocator allocator = Allocator.Temp)
         {
             if (inputSampleRate == outputSampleRate) { return samples; }
 
             var samplesLength = samples.Length;
             var ratio = outputSampleRate / (float)inputSampleRate;
             var resampledLength = (int)math.round(samplesLength * ratio);
-            var buffer = new NativeArray<float>(resampledLength, Allocator.Temp);
+            var buffer = new NativeArray<float>(resampledLength, allocator);
 
             for (var i = 0; i < resampledLength; i++)
             {
@@ -586,7 +567,16 @@ namespace Utilities.Audio
 
                                 if (bufferCallback != null)
                                 {
-                                    await bufferCallback(Encode(outputSamples, 0, samplesToWrite)).ConfigureAwait(false);
+                                    var encoded = Encode(outputSamples, 0, samplesToWrite, allocator: Allocator.Persistent);
+
+                                    try
+                                    {
+                                        await bufferCallback(encoded).ConfigureAwait(false);
+                                    }
+                                    finally
+                                    {
+                                        encoded.Dispose();
+                                    }
                                 }
                             }
                             catch (Exception e)

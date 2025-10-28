@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Scripting;
@@ -150,18 +151,7 @@ namespace Utilities.Audio
             => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(false);
 
         public Task SampleCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
-        {
-            var nativeSamples = new NativeArray<float>(samples, Allocator.Temp);
-
-            try
-            {
-                return SampleCallbackAsync(nativeSamples, count, inputSampleRate, outputSampleRate);
-            }
-            finally
-            {
-                nativeSamples.Dispose();
-            }
-        }
+            => SampleCallbackAsync(new NativeArray<float>(samples, Allocator.Temp), count, inputSampleRate, outputSampleRate);
 
         public void SampleCallback(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
             => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(false);
