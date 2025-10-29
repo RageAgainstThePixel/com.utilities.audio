@@ -2,7 +2,6 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Collections;
@@ -607,7 +606,6 @@ namespace Utilities.Audio
                 }
                 finally
                 {
-                    Debug.Log("Cleaning up buffer");
                     outputSamples.Dispose();
                 }
             }

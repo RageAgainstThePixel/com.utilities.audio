@@ -4,8 +4,6 @@ using JetBrains.Annotations;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
-using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.Scripting;
 
@@ -163,8 +161,7 @@ namespace Utilities.Audio
                 samples = PCMEncoder.Resample(samples, inputSampleRate.Value, outputSampleRate.Value);
             }
 
-            count ??= samples.Length;
-            return Enqueue(samples, count.Value);
+            return Enqueue(samples, count ?? samples.Length);
         }
 
         public Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)

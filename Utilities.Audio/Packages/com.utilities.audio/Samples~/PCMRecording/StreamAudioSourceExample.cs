@@ -1,6 +1,5 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
