@@ -171,6 +171,9 @@ namespace Utilities.Audio
         /// <param name="outputSampleRate"></param>
         /// <returns>Float array of samples.</returns>
         [Preserve]
+#if UNITY_6000_0_OR_NEWER
+        [Obsolete("use Decode with NativeArray<T>")]
+#endif
         public static float[] Decode(byte[] pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit, int? inputSampleRate = null, int? outputSampleRate = null)
         {
             if (pcmData.Length % (int)size != 0)

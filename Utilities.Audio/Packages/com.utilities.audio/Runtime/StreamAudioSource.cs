@@ -1,7 +1,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using JetBrains.Annotations;
-using System.Threading;
 using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
@@ -10,6 +9,10 @@ using UnityEngine.Scripting;
 #if PLATFORM_WEBGL && !UNITY_EDITOR
 using System;
 #endif // PLATFORM_WEBGL && !UNITY_EDITOR
+
+#if !UNITY_2022_1_OR_NEWER
+using System.Threading;
+#endif // !UNITY_2022_1_OR_NEWER
 
 namespace Utilities.Audio
 {

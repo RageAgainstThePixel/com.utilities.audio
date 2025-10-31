@@ -14,8 +14,9 @@ namespace Utilities.Audio
         /// <param name="size">Size of PCM sample data.</param>
         /// <param name="trim">Optional, trim the silence from the data.</param>
         /// <param name="outputSampleRate">The expected output sample rate of the audio clip.</param>
+        /// <param name="allocator"></param>
         /// <returns>Byte array PCM data.</returns>
-        public static NativeArray<byte> EncodeToPCM(this AudioClip audioClip, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, int outputSampleRate = 44100)
+        public static NativeArray<byte> EncodeToPCM(this AudioClip audioClip, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, int outputSampleRate = 44100, Allocator allocator = Allocator.Temp)
         {
 #if UNITY_6000_0_OR_NEWER
             var samples = new NativeArray<float>(audioClip.samples * audioClip.channels, Allocator.Temp);
@@ -43,16 +44,15 @@ namespace Utilities.Audio
                     nativeSamples.Dispose();
                 }
 #else
-                return PCMEncoder.Encode(samples, size, trim);
+                return PCMEncoder.Encode(samples, size, trim, allocator: allocator);
 #endif
 
             }
+            // ReSharper disable once RedundantEmptyFinallyBlock
             finally
             {
 #if UNITY_6000_0_OR_NEWER
                 samples.Dispose();
-#else
-                samples = null;
 #endif
             }
         }
@@ -64,6 +64,9 @@ namespace Utilities.Audio
         /// <param name="pcmData">PCM data to decode.</param>
         /// <param name="size">Size of PCM sample data.</param>
         /// <param name="inputSampleRate">The sample rate of the <see cref="pcmData"/> provided.</param>
+#if UNITY_6000_0_OR_NEWER
+        [Obsolete("Use DecodeFromPCM with NativeArray")]
+#endif
         public static void DecodeFromPCM(this AudioClip audioClip, byte[] pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit, int inputSampleRate = 44100)
             => audioClip.SetData(PCMEncoder.Decode(pcmData, size, inputSampleRate, 44100), 0);
 
