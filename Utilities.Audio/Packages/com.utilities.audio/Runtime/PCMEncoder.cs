@@ -250,7 +250,9 @@ namespace Utilities.Audio
 
             if (inputSampleRate.HasValue && outputSampleRate.HasValue)
             {
-                samples = Resample(samples, inputSampleRate.Value, outputSampleRate.Value, allocator);
+                var resampled = Resample(samples, inputSampleRate.Value, outputSampleRate.Value, allocator);
+                samples.Dispose();
+                samples = resampled;
             }
             else if (inputSampleRate.HasValue || outputSampleRate.HasValue)
             {

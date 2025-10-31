@@ -30,7 +30,13 @@ namespace Utilities.Audio
 
                 if (audioClip.frequency != outputSampleRate)
                 {
+#if UNITY_6000_0_OR_NEWER
+                    var resampled = PCMEncoder.Resample(samples, audioClip.frequency, outputSampleRate, Allocator.Temp);
+                    samples.Dispose();
+                    samples = resampled;
+#else
                     samples = PCMEncoder.Resample(samples, audioClip.frequency, outputSampleRate);
+#endif
                 }
 #if !UNITY_6000_0_OR_NEWER
                 var nativeSamples = new NativeArray<float>(samples, Allocator.Temp);

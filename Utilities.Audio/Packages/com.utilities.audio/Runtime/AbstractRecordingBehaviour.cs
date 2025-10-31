@@ -120,7 +120,7 @@ namespace Utilities.Audio
         private void OnDisable()
         {
 #if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
-            inputActionRef.action.Enable();
+            inputActionRef.action.Disable();
 #endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
         }
 
