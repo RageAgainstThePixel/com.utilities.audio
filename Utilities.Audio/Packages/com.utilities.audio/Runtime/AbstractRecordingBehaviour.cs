@@ -4,6 +4,10 @@ using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+
 namespace Utilities.Audio
 {
     /// <summary>
@@ -16,8 +20,13 @@ namespace Utilities.Audio
         [SerializeField]
         private AudioSource audioSource;
 
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+        [SerializeField]
+        private InputActionProperty inputActionRef = new(new InputAction("Record", InputActionType.Button, "<Keyboard>/space"));
+#else
         [SerializeField]
         private KeyCode recordingKey = KeyCode.Space;
+#endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
 
         [SerializeField]
         private bool debug;
@@ -29,10 +38,13 @@ namespace Utilities.Audio
         }
 
         [SerializeField]
-        private SampleRates sampleRate = SampleRates.Hz44100;
+        private SampleRates sampleRate = SampleRates.Auto;
+
+        private int recordingSampleRate = -1;
 
         public enum SampleRates
         {
+            Auto = 0,
             Hz16000 = 16000,
             Hz24000 = 24000,
             Hz22050 = 22050,
@@ -51,7 +63,7 @@ namespace Utilities.Audio
         private System.Threading.CancellationTokenSource lifetimeCancellationTokenSource = new();
         // ReSharper disable once InconsistentNaming
         private System.Threading.CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
-#endif
+#endif // !UNITY_2022_1_OR_NEWER
 
         private void OnValidate()
         {
@@ -75,12 +87,24 @@ namespace Utilities.Audio
             RecordingManager.OnClipRecorded += OnClipRecorded;
         }
 
+        private void OnEnable()
+        {
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+            inputActionRef.action.Enable();
+#endif // ENABLE_INPUT_SYSTEM
+        }
+
         private void Update()
         {
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+            if (inputActionRef.action.WasPressedThisFrame())
+#else
             if (Input.GetKeyUp(recordingKey))
+#endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
             {
                 if (RecordingManager.IsRecording)
                 {
+                    recordingSampleRate = -1;
                     RecordingManager.EndRecording();
                 }
                 else
@@ -93,16 +117,25 @@ namespace Utilities.Audio
             }
         }
 
+        private void OnDisable()
+        {
+#if INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+            inputActionRef.action.Disable();
+#endif // INPUT_SYSTEM_EXISTS && ENABLE_INPUT_SYSTEM
+        }
+
 #if !UNITY_2022_1_OR_NEWER
         private void OnDestroy()
         {
             lifetimeCancellationTokenSource.Cancel();
             lifetimeCancellationTokenSource.Dispose();
         }
-#endif
+#endif // !UNITY_2022_1_OR_NEWER
 
         private void OnClipRecorded(Tuple<string, AudioClip> recording)
         {
+            recordingSampleRate = -1;
+
             var (path, newClip) = recording;
 
             if (debug)
@@ -132,8 +165,23 @@ namespace Utilities.Audio
 
             try
             {
+                if (recordingSampleRate <= 0)
+                {
+                    if (sampleRate == 0)
+                    {
+                        Microphone.GetDeviceCaps(RecordingManager.DefaultRecordingDevice, out _, out var max);
+                        recordingSampleRate = max;
+                    }
+                    else
+                    {
+                        recordingSampleRate = (int)sampleRate;
+                    }
+                }
+
                 // Starts the recording process
-                var (path, newClip) = await RecordingManager.StartRecordingAsync<TEncoder>(outputSampleRate: (int)sampleRate, cancellationToken: destroyCancellationToken);
+                var (path, newClip) = await RecordingManager.StartRecordingAsync<TEncoder>(
+                    outputSampleRate: recordingSampleRate,
+                    cancellationToken: destroyCancellationToken);
 
                 if (debug)
                 {

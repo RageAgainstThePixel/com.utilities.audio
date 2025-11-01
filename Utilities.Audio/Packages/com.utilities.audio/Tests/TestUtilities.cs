@@ -1,15 +1,16 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using Unity.Collections;
 
 namespace Utilities.Audio.Tests
 {
     internal static class TestUtilities
     {
-        public static float[] GenerateSineWaveSamples(double frequency, int sampleRate, float duration = 1f, float amplitude = 0.5f)
+        public static NativeArray<float> GenerateSineWaveSamples(double frequency, int sampleRate, float duration = 1f, float amplitude = 0.5f)
         {
             var sampleCount = (int)(sampleRate * duration);
-            var samples = new float[sampleCount];
+            var samples = new NativeArray<float>(sampleCount, Allocator.Temp);
 
             for (var i = 0; i < sampleCount; i++)
             {
@@ -22,11 +23,11 @@ namespace Utilities.Audio.Tests
             return samples;
         }
 
-        public static float[] GenerateSineWaveSamplesWithSilence(double frequency, int sampleRate, int silenceSamplesAtStart, int silenceSamplesAtEnd, float duration = 1f, float amplitude = 0.5f)
+        public static NativeArray<float> GenerateSineWaveSamplesWithSilence(double frequency, int sampleRate, int silenceSamplesAtStart, int silenceSamplesAtEnd, float duration = 1f, float amplitude = 0.5f)
         {
             // Assuming sampleRate is the number of non-silent samples excluding any silence
             var sampleCount = (int)(sampleRate * duration) + silenceSamplesAtStart + silenceSamplesAtEnd;
-            var samples = new float[sampleCount];
+            var samples = new NativeArray<float>(sampleCount, Allocator.Temp);
 
             // Generate silence at the start of the sample
             for (var i = 0; i < silenceSamplesAtStart; i++)
@@ -52,14 +53,16 @@ namespace Utilities.Audio.Tests
             return samples;
         }
 
-        private static void NormalizeSamples(ref float[] samples)
+        private static void NormalizeSamples(ref NativeArray<float> samples)
         {
             var maxAbsValue = 0f;
 
             // Find the maximum absolute value in the samples
-            foreach (var sample in samples)
+            for (var i = 0; i < samples.Length; i++)
             {
+                var sample = samples[i];
                 var absValue = Math.Abs(sample);
+
                 if (absValue > maxAbsValue)
                 {
                     maxAbsValue = absValue;

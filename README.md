@@ -53,9 +53,10 @@ On its own this package doesn't do too much but provide base functionality for r
   - [Stream Callback](#start-recording-and-callback-each-sample)
 - [Recording Behaviour](#recording-behaviour)
 - [Audio Streaming Behaviour](#audio-streaming-behaviour)
+- [Audio Reactive Example](#audio-reactive-example) :new:
 - [Audio Clip Extensions](#audio-clip-extensions)
-  - [Encode PCM](#encode-pcm)
-  - [Decode PCM](#decode-pcm)
+  - [Encode PCM](#encode-pcm-to-bytes)
+  - [Decode PCM](#decode-pcm-from-bytes)
 - [IEncoder](#iencoder)
 
 ## Encoder Packages
@@ -90,26 +91,35 @@ A basic `PCMRecordingBehaviour` is included in this package to enable basic reco
 
 ## Audio Streaming Behaviour
 
-A `AudioStreamingSource` is included in this package to enable basic audio streaming to any project. Simply add this component to any GameObject in your scene.
+A `StreamAudioSource` component is included in this package to enable basic audio streaming to any project. Simply add this component to any GameObject in your scene.
 
 This component was designed to streamline platform support for WebGL since it doesn't support `OnAudioFilterRead` API. On platforms that support it, it will use the `OnAudioFilterRead` API to stream audio data. On WebGL, it will stream the data directly to an instanced `AudioContext` object for you.
 
 > [!NOTE]
 > Volume control is provided by the `AudioSource` component, so updating the volume on the AudioSource as normal, will also update the volume of the `AudioContext` in WebGL.
 
+## Audio Reactive Example
+
+The samples contain an example `AudioReactiveBehaviour` implementation that uses the `StreamAudioSource` component. This example uses the audio data from the streaming source to create a simple scaling effect on a GameObject.
+
+This example uses `OnAudioFilterRead` to get the audio data from the `StreamAudioSource` component and then uses that data to scale the GameObject.
+
+> [!WARNING]
+> `OnAudioFilterRead` is not supported in WebGL, so this example will only work in the editor and on platforms that support it.
+
 ## Audio Clip Extensions
 
 Provides extensions to encode `AudioClip`s to PCM encoded bytes.
 Supports 8, 16, 24, and 32 bit sample sizes.
 
-### Encode PCM
+### Encode PCM to bytes
 
 ```csharp
 // Encodes the audioClip to raw PCM bytes.
-var pcmBytes = audioClip.EncodeToPCM();
+NativeArray<byte> pcmBytes = audioClip.EncodeToPCM();
 ```
 
-### Decode PCM
+### Decode PCM from bytes
 
 ```csharp
 // Decodes the raw PCM byte data and sets it to the audioClip.
