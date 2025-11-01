@@ -169,7 +169,7 @@ namespace Utilities.Audio
                 {
                     if (sampleRate == 0)
                     {
-                        UnityEngine.Microphone.GetDeviceCaps(RecordingManager.DefaultRecordingDevice, out _, out var max);
+                        Microphone.GetDeviceCaps(RecordingManager.DefaultRecordingDevice, out _, out var max);
                         recordingSampleRate = max;
                     }
                     else
