@@ -241,7 +241,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.EightBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.EightBit);
 
-            File.WriteAllBytes("test-samples/8bit-sine.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/8bit-sine.pcm", encodedBytes.ToArray());
 
             // Assert at the end of the unit test
             Assert.AreEqual(k_44100, decodedSamples.Length);
@@ -261,7 +261,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.EightBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.EightBit);
 
-            File.WriteAllBytes("test-samples/8bit-sine-trimmed.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/8bit-sine-trimmed.pcm", encodedBytes.ToArray());
 
             // The decoded samples should be only the non-silent portion of the original samples.
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
@@ -282,7 +282,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(resampledSamples, PCMFormatSize.EightBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.EightBit);
 
-            File.WriteAllBytes("test-samples/8bit-sine-resampled.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/8bit-sine-resampled.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_24000, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
 
@@ -303,7 +303,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.SixteenBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.SixteenBit);
 
-            File.WriteAllBytes("test-samples/16bit-sine.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/16bit-sine.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
@@ -324,7 +324,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.SixteenBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.SixteenBit);
 
-            File.WriteAllBytes("test-samples/16bit-sine-trimmed.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/16bit-sine-trimmed.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
@@ -343,7 +343,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(resampledSamples, PCMFormatSize.SixteenBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.SixteenBit);
 
-            File.WriteAllBytes("test-samples/16bit-sine-resampled.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/16bit-sine-resampled.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
 
@@ -364,7 +364,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.TwentyFourBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.TwentyFourBit);
 
-            File.WriteAllBytes("test-samples/24bit-sine.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/24bit-sine.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
@@ -385,7 +385,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.TwentyFourBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.TwentyFourBit);
 
-            File.WriteAllBytes("test-samples/24bit-sine-trimmed.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/24bit-sine-trimmed.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
@@ -404,7 +404,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(resampledSamples, PCMFormatSize.TwentyFourBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.TwentyFourBit);
 
-            File.WriteAllBytes("test-samples/24bit-sine-resampled.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/24bit-sine-resampled.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_24000, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
 
@@ -425,7 +425,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.ThirtyTwoBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.ThirtyTwoBit);
 
-            File.WriteAllBytes("test-samples/32bit-sine.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/32bit-sine.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the original sample length.");
 
@@ -446,7 +446,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(testSamples, PCMFormatSize.ThirtyTwoBit, true);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.ThirtyTwoBit);
 
-            File.WriteAllBytes("test-samples/32bit-sine-trimmed.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/32bit-sine-trimmed.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_44100, decodedSamples.Length, "Decoded samples length should match the non-silent sample length after trimming.");
 
@@ -465,7 +465,7 @@ namespace Utilities.Audio.Tests
             var encodedBytes = PCMEncoder.Encode(resampledSamples, PCMFormatSize.ThirtyTwoBit);
             var decodedSamples = PCMEncoder.Decode(encodedBytes, PCMFormatSize.ThirtyTwoBit);
 
-            File.WriteAllBytes("test-samples/32bit-sine-resampled.pcm", encodedBytes);
+            File.WriteAllBytes("test-samples/32bit-sine-resampled.pcm", encodedBytes.ToArray());
 
             Assert.AreEqual(k_24000, decodedSamples.Length, "Decoded samples length should match the resampled sample length.");
 
@@ -478,3 +478,4 @@ namespace Utilities.Audio.Tests
         #endregion 32 Bit Tests
     }
 }
+

@@ -71,7 +71,7 @@ namespace Utilities.Audio
         /// <param name="size">Size of PCM sample data.</param>
         /// <param name="inputSampleRate">The sample rate of the <see cref="pcmData"/> provided.</param>
 #if UNITY_6000_0_OR_NEWER
-        [Obsolete("Use DecodeFromPCM with NativeArray")]
+        [System.Obsolete("Use DecodeFromPCM with NativeArray")]
 #endif
         public static void DecodeFromPCM(this AudioClip audioClip, byte[] pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit, int inputSampleRate = 44100)
             => audioClip.SetData(PCMEncoder.Decode(pcmData, size, inputSampleRate, 44100), 0);
