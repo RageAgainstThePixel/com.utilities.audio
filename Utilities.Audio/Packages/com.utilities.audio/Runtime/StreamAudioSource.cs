@@ -6,7 +6,7 @@ using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Scripting;
 
-#if PLATFORM_WEBGL && !UNITY_EDITOR
+#if PLATFORM_WEBGL  && !UNITY_EDITOR
 using System;
 #endif // PLATFORM_WEBGL && !UNITY_EDITOR
 
@@ -35,11 +35,11 @@ namespace Utilities.Audio
         private CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
 #endif // !UNITY_2022_1_OR_NEWER
 
-        private NativeQueue<float> audioBuffer;
+        private NativeQueue<float> audioQueue;
 
         private float[] resampleBuffer;
 
-        public bool IsEmpty => audioBuffer.Count == 0;
+        public bool IsEmpty => audioQueue.Count == 0;
 
         private void OnValidate()
         {
@@ -51,7 +51,7 @@ namespace Utilities.Audio
 
         private void Awake()
         {
-            audioBuffer = new NativeQueue<float>(Allocator.Persistent);
+            audioQueue = new NativeQueue<float>(Allocator.Persistent);
             OnValidate();
 #if PLATFORM_WEBGL && !UNITY_EDITOR
             AudioPlaybackLoop();
@@ -78,6 +78,7 @@ namespace Utilities.Audio
 
             var audioContextPtr = AudioStream_InitPlayback(AudioSettings.outputSampleRate);
             var buffer = new float[AudioSettings.outputSampleRate];
+            var bufferLength = buffer.Length;
 
             try
             {
@@ -91,21 +92,23 @@ namespace Utilities.Audio
                     //Debug.Log($"AudioStream_SetVolume::volume:{audioSource.volume}");
                     AudioStream_SetVolume(audioContextPtr, audioSource.volume);
 
-                    var bufferLength = buffer.Length;
+                    var count = 0;
 
-                    if (audioBuffer.Count >= bufferLength)
+                    for (var i = 0; i < bufferLength; i++)
                     {
-                        var count = 0;
-
-                        for (var i = 0; i < bufferLength; i++)
+                        if (audioQueue.TryDequeue(out var sample))
                         {
-                            if (audioBuffer.TryDequeue(out var sample))
-                            {
-                                buffer[i] = sample;
-                                count++;
-                            }
+                            buffer[i] = sample;
+                            count++;
                         }
+                        else
+                        {
+                            break;
+                        }
+                    }
 
+                    if (count > 0)
+                    {
                         //Debug.Log($"AudioStream_AppendBufferPlayback::bufferLength:{count}");
                         AudioStream_AppendBufferPlayback(audioContextPtr, buffer, count);
                     }
@@ -125,11 +128,12 @@ namespace Utilities.Audio
 #else
         private void OnAudioFilterRead(float[] data, int channels)
         {
-            if (!audioBuffer.IsCreated || audioBuffer.Count < data.Length) { return; }
+            var length = data.Length;
+            if (!audioQueue.IsCreated || audioQueue.Count < length) { return; }
 
-            for (var i = 0; i < data.Length; i += channels)
+            for (var i = 0; i < length; i += channels)
             {
-                if (audioBuffer.TryDequeue(out var sample))
+                if (audioQueue.TryDequeue(out var sample))
                 {
                     for (var j = 0; j < channels; j++)
                     {
@@ -145,7 +149,7 @@ namespace Utilities.Audio
 #if !UNITY_2022_1_OR_NEWER
             lifetimeCancellationTokenSource.Cancel();
 #endif // !UNITY_2022_1_OR_NEWER
-            audioBuffer.Dispose();
+            audioQueue.Dispose();
         }
 
         public void SampleCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
@@ -177,7 +181,7 @@ namespace Utilities.Audio
         {
             for (var i = 0; i < count; i++)
             {
-                audioBuffer.Enqueue(samples[i]);
+                audioQueue.Enqueue(samples[i]);
             }
 
             return Task.CompletedTask;
@@ -185,6 +189,6 @@ namespace Utilities.Audio
 
         [UsedImplicitly]
         public void ClearBuffer()
-            => audioBuffer.Clear();
+            => audioQueue.Clear();
     }
 }

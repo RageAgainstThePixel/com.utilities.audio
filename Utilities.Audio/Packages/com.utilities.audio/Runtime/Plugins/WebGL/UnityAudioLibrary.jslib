@@ -32,7 +32,7 @@ var UnityAudioLibrary = {
           }
           const chunks = instance.chunkQueue.length;
           if (instance.audioContext.state === 'suspended') {
-            console.log(`AudioContext state is suspended, attempting to resume.`);
+            // console.log(`AudioContext state is suspended, attempting to resume.`);
             await instance.audioContext.resume();
             setTimeout(processAudio); // try again immediately
             return;
@@ -43,7 +43,7 @@ var UnityAudioLibrary = {
           }
           const chunkCount = Math.min(5, chunks); // process up to 5 chunks at a time to reduce latency
           const maxDuration = chunkCount * playbackSampleRate;
-          console.log(`[${audioPtr}] Processing ${chunkCount} chunks of ${chunks} for a max duration ${maxDuration / playbackSampleRate}`);
+          // console.log(`[${audioPtr}] Processing ${chunkCount} of ${chunks} chunks for a max duration ${maxDuration / playbackSampleRate}`);
           const audioBuffer = instance.audioContext.createBuffer(1, maxDuration, playbackSampleRate);
           let bufferPosition = 0;
           for (let i = 0; i < chunkCount; i++) {
@@ -61,11 +61,11 @@ var UnityAudioLibrary = {
           instance.activeSource.buffer = audioBuffer;
           instance.activeSource.connect(gain);
           instance.activeSource.onended = function () {
-            console.log(`[${audioPtr}] Audio playback ended.`);
+            // console.log(`[${audioPtr}] Audio playback ended.`);
             processAudio(); // don't set a timeout, process immediately
           };
           instance.activeSource.start(0, 0, duration);
-          console.log(`[${audioPtr}] Playing audio for ${duration} seconds.`);
+          // console.log(`[${audioPtr}] Playing audio for ${duration} seconds.`);
         } catch (error) {
           console.error(error);
         }
@@ -106,7 +106,7 @@ var UnityAudioLibrary = {
       // copy the buffer so that it isn't overwritten by the next buffer update
       const chunkCopy = new Float32Array(chunk);
       instance.chunkQueue.push(chunkCopy);
-      // console.log(`[${audioPtr}] Appended buffer of length ${bufferLength}.`);
+      // console.log(`[${audioPtr}] Appended buffer of length ${bufferLength}. Queue length is now ${instance.chunkQueue.length}.`);
       return 0;
     } catch (error) {
       console.error(error);
