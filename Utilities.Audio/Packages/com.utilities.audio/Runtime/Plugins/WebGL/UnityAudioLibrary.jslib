@@ -41,7 +41,6 @@ var UnityAudioLibrary = {
             setTimeout(processAudio, 10); // try again after a short delay
             return;
           }
-          instance.playbackInterval = 0;
           const chunkCount = Math.min(5, chunks); // process up to 5 chunks at a time to reduce latency
           const maxDuration = chunkCount * playbackSampleRate;
           console.log(`[${audioPtr}] Processing ${chunkCount} chunks of ${chunks} for a max duration ${maxDuration / playbackSampleRate}`);
@@ -63,7 +62,7 @@ var UnityAudioLibrary = {
           instance.activeSource.connect(gain);
           instance.activeSource.onended = function () {
             console.log(`[${audioPtr}] Audio playback ended.`);
-            processAudio();
+            processAudio(); // don't set a timeout, process immediately
           };
           instance.activeSource.start(0, 0, duration);
           console.log(`[${audioPtr}] Playing audio for ${duration} seconds.`);
@@ -151,8 +150,6 @@ var UnityAudioLibrary = {
       }
       try {
         // console.log(`Disposing audio context with pointer ${audioPtr}.`);
-        clearInterval(instance.playbackInterval);
-        instance.playbackInterval = 0;
         if (instance.activeSource != null) {
           instance.activeSource.stop();
           instance.activeSource.disconnect();
