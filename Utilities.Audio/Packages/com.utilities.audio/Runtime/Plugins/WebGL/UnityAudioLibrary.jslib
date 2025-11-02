@@ -32,7 +32,7 @@ var UnityAudioLibrary = {
           }
           const chunks = instance.chunkQueue.length;
           if (instance.audioContext.state === 'suspended') {
-            // console.log(`AudioContext state is suspended, attempting to resume.`);
+            console.log(`AudioContext state is suspended, attempting to resume.`);
             await instance.audioContext.resume();
             setTimeout(processAudio); // try again immediately
             return;
@@ -44,7 +44,7 @@ var UnityAudioLibrary = {
           instance.playbackInterval = 0;
           const chunkCount = Math.min(5, chunks); // process up to 5 chunks at a time to reduce latency
           const maxDuration = chunkCount * playbackSampleRate;
-          // console.log(`[${audioPtr}] Processing ${chunkCount} chunks of ${chunks} for a max duration ${maxDuration / playbackSampleRate}`);
+          console.log(`[${audioPtr}] Processing ${chunkCount} chunks of ${chunks} for a max duration ${maxDuration / playbackSampleRate}`);
           const audioBuffer = instance.audioContext.createBuffer(1, maxDuration, playbackSampleRate);
           let bufferPosition = 0;
           for (let i = 0; i < chunkCount; i++) {
@@ -61,9 +61,12 @@ var UnityAudioLibrary = {
           instance.activeSource = instance.audioContext.createBufferSource();
           instance.activeSource.buffer = audioBuffer;
           instance.activeSource.connect(gain);
-          instance.activeSource.onended = processAudio; // schedule next processing when done
+          instance.activeSource.onended = function () {
+            console.log(`[${audioPtr}] Audio playback ended.`);
+            processAudio();
+          };
           instance.activeSource.start(0, 0, duration);
-          // console.log(`[${audioPtr}] Playing audio for ${duration} seconds.`);
+          console.log(`[${audioPtr}] Playing audio for ${duration} seconds.`);
         } catch (error) {
           console.error(error);
         }
