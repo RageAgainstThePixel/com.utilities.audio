@@ -23,35 +23,28 @@ var UnityAudioLibrary = {
       const audioContext = new AudioContext({ sampleRate: playbackSampleRate });
       const gain = audioContext.createGain();
       gain.connect(audioContext.destination);
-      function processAudio() {
-        function setPlaybackInterval(instance) {
-          if (instance.playbackInterval === 0) {
-            // console.log(`[${audioPtr}] setting new processAudio interval.`);
-            instance.playbackInterval = setInterval(processAudio, 20);
-          }
-          // console.log(`[${audioPtr}] processAudio, sleeping for 20ms.`);
-        }
+      async function processAudio() {
         try {
           // console.log(`Processing audio for pointer ${audioPtr}.`);
           const instance = audioPtrs[audioPtr];
           if (instance == null) {
             throw new Error(`Audio context with pointer ${audioPtr} not found.`);
           }
+          const chunks = instance.chunkQueue.length;
           if (instance.audioContext.state === 'suspended') {
             // console.log(`AudioContext state is suspended, attempting to resume.`);
-            instance.audioContext.resume();
-            setPlaybackInterval(instance);
+            await instance.audioContext.resume();
+            setTimeout(processAudio); // try again immediately
             return;
-          } else if (instance.chunkQueue.length === 0) {
+          } else if (chunks === 0) {
             // console.log(`No chunks to process.`);
-            setPlaybackInterval(instance);
+            setTimeout(processAudio, 10); // try again after a short delay
             return;
           }
-          clearTimeout(instance.playbackInterval);
           instance.playbackInterval = 0;
-          const chunkCount = Math.min(5, instance.chunkQueue.length);
+          const chunkCount = Math.min(5, chunks); // process up to 5 chunks at a time to reduce latency
           const maxDuration = chunkCount * playbackSampleRate;
-          // console.log(`[${audioPtr}] Processing ${chunkCount} chunks of ${instance.chunkQueue.length} for a max duration ${maxDuration / playbackSampleRate}`);
+          // console.log(`[${audioPtr}] Processing ${chunkCount} chunks of ${chunks} for a max duration ${maxDuration / playbackSampleRate}`);
           const audioBuffer = instance.audioContext.createBuffer(1, maxDuration, playbackSampleRate);
           let bufferPosition = 0;
           for (let i = 0; i < chunkCount; i++) {
@@ -65,27 +58,25 @@ var UnityAudioLibrary = {
             instance.activeSource.disconnect();
             instance.activeSource = null;
           }
-          const activeSource = instance.audioContext.createBufferSource();
-          activeSource.buffer = audioBuffer;
-          activeSource.connect(gain);
-          activeSource.onended = processAudio;
-          activeSource.start(0, 0, duration);
+          instance.activeSource = instance.audioContext.createBufferSource();
+          instance.activeSource.buffer = audioBuffer;
+          instance.activeSource.connect(gain);
+          instance.activeSource.onended = processAudio; // schedule next processing when done
+          instance.activeSource.start(0, 0, duration);
           // console.log(`[${audioPtr}] Playing audio for ${duration} seconds.`);
-          instance.activeSource = activeSource;
         } catch (error) {
           console.error(error);
         }
       }
       // console.log(`Set playback interval for pointer ${audioPtr}.`);
-      const playbackInterval = setInterval(processAudio, 20);
       audioPtrs[audioPtr] = {
         chunkQueue: [], // as Float32Array[]
         audioContext: audioContext,
         gain: gain,
         activeSource: null,
-        playbackInterval: playbackInterval,
       };
       // console.log(`Initialized audio context with pointer ${audioPtr}.`);
+      setTimeout(processAudio); // start processing audio
       return audioPtr;
     } catch (error) {
       console.error(error);
