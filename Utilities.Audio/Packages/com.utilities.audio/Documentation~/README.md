@@ -40,6 +40,7 @@ openupm add com.utilities.audio
 - Open your Unity Package Manager
 - Add package from git url: `https://github.com/RageAgainstThePixel/com.utilities.audio.git#upm`
   - [com.utilities.async](https://github.com/RageAgainstThePixel/com.utilities.async)
+  - [com.utilities.extensions](https://github.com/RageAgainstThePixel/com.utilities.extensions)
 
 ## Documentation
 
@@ -50,13 +51,16 @@ On its own this package doesn't do too much but provide base functionality for r
 - [Encoder Packages](#encoder-packages)
 - [Recording Manager](#recording-manager)
   - [Steam Save To Disk](#start-recording-while-streaming-to-disk)
-  - [Stream Callback](#start-recording-and-callback-each-sample)
+  - [Stream Callbacks](#stream-callbacks)
+    - [Raw Buffer Callback](#raw-buffer-callback)
+    - [Sample Callback](#sample-callback)
 - [Recording Behaviour](#recording-behaviour)
 - [Audio Streaming Behaviour](#audio-streaming-behaviour)
 - [Audio Reactive Example](#audio-reactive-example) :new:
 - [Audio Clip Extensions](#audio-clip-extensions)
-  - [Encode PCM](#encode-pcm)
-  - [Decode PCM](#decode-pcm)
+  - [Encode PCM](#encode-pcm-to-bytes)
+  - [Decode PCM](#decode-pcm-from-bytes)
+- [IEncoder](#iencoder)
 
 ## Encoder Packages
 
@@ -75,11 +79,28 @@ A perfect example implementation on how to use the `RecordingManager` is in the 
 var (savedPath, recordedClip) = await RecordingManager.StartRecordingAsync<PCMEncoder>("my recording", "directory/to/save");
 ```
 
-### Start Recording and callback each sample
+### Stream Callbacks
+
+You can provide a callback to process the captured audio samples or buffer as they are recorded.
+
+#### Raw Buffer Callback
+
+Write the raw encoded buffer to a `MemoryStream` that can be saved to disk or processed later.
 
 ```csharp
 using var stream = new MemoryStream();
-await RecordingManager.StartRecordingStreamAsync<PCMEncoder>(sample => stream.Write(sample, 0, sample.Length));
+await RecordingManager.StartRecordingStreamAsync<PCMEncoder>(bufferCallback => stream.WriteAsync(bufferCallback));
+```
+
+#### Sample Callback
+
+Forward the samples to a `StreamAudioSource` component for realtime audio streaming or processing.
+
+```csharp
+RecordingManager.StartRecordingStream<PCMEncoder>(
+    (samples, count) => streamAudioSource.SampleCallback(samples, count),
+    recordingSampleRate,
+    destroyCancellationToken);
 ```
 
 ## Recording Behaviour
@@ -111,17 +132,25 @@ This example uses `OnAudioFilterRead` to get the audio data from the `StreamAudi
 Provides extensions to encode `AudioClip`s to PCM encoded bytes.
 Supports 8, 16, 24, and 32 bit sample sizes.
 
-### Encode PCM
+### Encode PCM to bytes
+
+> [!WARNING]
+> The resulting `NativeArray<byte>` must be disposed of manually to avoid memory leaks, you can adjust the allocator type by passing in an optional parameter.
 
 ```csharp
-// Encodes the audioClip to raw PCM bytes.
-var pcmBytes = audioClip.EncodeToPCM();
+// Encodes the audioClip to PCM byte data.
+using NativeArray<byte> pcmBytes = audioClip.EncodeToPCM();
 ```
 
-### Decode PCM
+### Decode PCM from bytes
+
+Decodes the raw PCM byte data and sets it to the `AudioClip`.
+Can be either `NativeArray<byte>` or `byte[]` types.
+
+> [!Note]
+> Unity 6+, it is recommended to use `NativeArray<byte>` for better performance.
 
 ```csharp
-// Decodes the raw PCM byte data and sets it to the audioClip.
 audioClip.DecodeFromPCM(pcmBytes);
 ```
 
