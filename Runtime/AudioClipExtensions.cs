@@ -19,7 +19,7 @@ namespace Utilities.Audio
         public static NativeArray<byte> EncodeToPCM(this AudioClip audioClip, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, int outputSampleRate = 44100, Allocator allocator = Allocator.Temp)
         {
 #if UNITY_6000_0_OR_NEWER
-            var samples = new NativeArray<float>(audioClip.samples * audioClip.channels, Allocator.Temp);
+            var samples = new NativeArray<float>(audioClip.samples * audioClip.channels, Allocator.Persistent);
 #else
             var samples = new float[audioClip.samples * audioClip.channels];
 #endif
@@ -31,7 +31,7 @@ namespace Utilities.Audio
                 if (audioClip.frequency != outputSampleRate)
                 {
 #if UNITY_6000_0_OR_NEWER
-                    var resampled = PCMEncoder.Resample(samples, audioClip.frequency, outputSampleRate, Allocator.Temp);
+                    var resampled = PCMEncoder.Resample(samples, audioClip.frequency, outputSampleRate, Allocator.Persistent);
                     samples.Dispose();
                     samples = resampled;
 #else
@@ -39,11 +39,11 @@ namespace Utilities.Audio
 #endif
                 }
 #if !UNITY_6000_0_OR_NEWER
-                var nativeSamples = new NativeArray<float>(samples, Allocator.Temp);
+                var nativeSamples = new NativeArray<float>(samples, Allocator.Persistent);
 
                 try
                 {
-                    return PCMEncoder.Encode(nativeSamples, size, trim);
+                    return PCMEncoder.Encode(nativeSamples, size, trim, allocator: allocator);
                 }
                 finally
                 {

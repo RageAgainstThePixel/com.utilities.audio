@@ -34,7 +34,18 @@ namespace Utilities.Audio
         /// <param name="outputSampleRate"></param>
         /// <returns>Byte array PCM data.</returns>
         public static byte[] Encode(float[] samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f, int? inputSampleRate = null, int? outputSampleRate = null)
-            => Encode(new NativeArray<float>(samples, Allocator.Temp), size, trim, silenceThreshold, inputSampleRate, outputSampleRate).ToArray();
+        {
+            var native = new NativeArray<float>(samples, Allocator.Persistent);
+
+            try
+            {
+                return Encode(native, size, trim, silenceThreshold, inputSampleRate, outputSampleRate).ToArray();
+            }
+            finally
+            {
+                native.Dispose();
+            }
+        }
 
         /// <summary>
         /// Encodes the <see cref="samples"/> to raw pcm bytes.
@@ -182,7 +193,16 @@ namespace Utilities.Audio
                 Array.Resize(ref pcmData, pcmData.Length - pcmData.Length % (int)size);
             }
 
-            return Decode(new NativeArray<byte>(pcmData, Allocator.Temp), size, inputSampleRate, outputSampleRate).ToArray();
+            var native = new NativeArray<byte>(pcmData, Allocator.Persistent);
+
+            try
+            {
+                return Decode(native, size, inputSampleRate, outputSampleRate).ToArray();
+            }
+            finally
+            {
+                native.Dispose();
+            }
         }
 
         /// <summary>
@@ -276,7 +296,17 @@ namespace Utilities.Audio
         public static float[] Resample(float[] samples, int inputSampleRate, int outputSampleRate)
         {
             if (inputSampleRate == outputSampleRate) { return samples; }
-            return Resample(new NativeArray<float>(samples, Allocator.Temp), inputSampleRate, outputSampleRate).ToArray();
+
+            var native = new NativeArray<float>(samples, Allocator.Persistent);
+
+            try
+            {
+                return Resample(native, inputSampleRate, outputSampleRate).ToArray();
+            }
+            finally
+            {
+                native.Dispose();
+            }
         }
 
         /// <summary>

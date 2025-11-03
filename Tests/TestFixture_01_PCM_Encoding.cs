@@ -70,7 +70,8 @@ namespace Utilities.Audio.Tests
 
         [Test]
         public void Test_00_03_Resample_DifferentSampleRate_ResamplesCorrectly()
-        {    // Test case 1
+        {
+            // Test case 1
             float[] samples1 = { 0.1f, 0.2f, 0.3f, 0.4f };
 
             var result1 = PCMEncoder.Resample(samples1, k_44100, k_24000);
@@ -168,6 +169,7 @@ namespace Utilities.Audio.Tests
         public void Test_00_07_01_Resample_LargerSampleArray_ResamplesCorrectly()
         {
             var samples = new float[k_44100];
+
             for (var i = 0; i < samples.Length; i++)
             {
                 samples[i] = (float)i / samples.Length;
@@ -187,6 +189,7 @@ namespace Utilities.Audio.Tests
         public void Test_00_07_02_Resample_SmallerSampleArray_ResamplesCorrectly()
         {
             var samples = new float[k_16000];
+
             for (var i = 0; i < samples.Length; i++)
             {
                 samples[i] = (float)i / samples.Length;
@@ -206,6 +209,7 @@ namespace Utilities.Audio.Tests
         public void Test_00_08_Resample_SineWav_ResamplesCorrectly()
         {
             var testSamples = TestUtilities.GenerateSineWaveSamples(TestFrequency, k_44100);
+
             for (var i = 0; i < testSamples.Length; i++)
             {
                 testSamples[i] = (float)i / testSamples.Length;
@@ -353,7 +357,7 @@ namespace Utilities.Audio.Tests
             }
         }
 
-        #endregion  16 Bit Tests
+        #endregion 16 Bit Tests
 
         #region 24 Bit Tests
 

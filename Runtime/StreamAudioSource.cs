@@ -1,14 +1,11 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using JetBrains.Annotations;
+using System;
 using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Scripting;
-
-#if PLATFORM_WEBGL  && !UNITY_EDITOR
-using System;
-#endif // PLATFORM_WEBGL && !UNITY_EDITOR
 
 #if !UNITY_2022_1_OR_NEWER
 using System.Threading;
@@ -128,18 +125,24 @@ namespace Utilities.Audio
 #else
         private void OnAudioFilterRead(float[] data, int channels)
         {
-            var length = data.Length;
-            if (!audioQueue.IsCreated || audioQueue.Count < length) { return; }
-
-            for (var i = 0; i < length; i += channels)
+            try
             {
-                if (audioQueue.TryDequeue(out var sample))
+                var length = data.Length;
+
+                for (var i = 0; i < length; i += channels)
                 {
-                    for (var j = 0; j < channels; j++)
+                    if (audioQueue.TryDequeue(out var sample))
                     {
-                        data[i + j] = sample;
+                        for (var j = 0; j < channels; j++)
+                        {
+                            data[i + j] = sample;
+                        }
                     }
                 }
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
             }
         }
 #endif // PLATFORM_WEBGL && !UNITY_EDITOR
@@ -153,28 +156,57 @@ namespace Utilities.Audio
         }
 
         public void SampleCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
-            => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(false);
+            => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(true);
 
         public Task SampleCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
-            => SampleCallbackAsync(new NativeArray<float>(samples, Allocator.Temp), count, inputSampleRate, outputSampleRate);
+        {
+            var native = new NativeArray<float>(samples, Allocator.Persistent);
+
+            try
+            {
+                return SampleCallbackAsync(native, count, inputSampleRate, outputSampleRate);
+            }
+            finally
+            {
+                native.Dispose();
+            }
+        }
 
         public void SampleCallback(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
-            => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(false);
+            => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(true);
 
         public Task SampleCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
+            NativeArray<float>? resampled = null;
+
             if (inputSampleRate.HasValue && outputSampleRate.HasValue && inputSampleRate != outputSampleRate)
             {
-                samples = PCMEncoder.Resample(samples, inputSampleRate.Value, outputSampleRate.Value);
+                resampled = PCMEncoder.Resample(samples, inputSampleRate.Value, outputSampleRate.Value, Allocator.Persistent);
             }
 
-            return Enqueue(samples, count ?? samples.Length);
+            try
+            {
+                return Enqueue(resampled ?? samples, count ?? samples.Length);
+            }
+            finally
+            {
+                resampled?.Dispose();
+            }
+
         }
 
         public Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
         {
-            var samples = PCMEncoder.Decode(pcmData, inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate);
-            return Enqueue(samples, samples.Length);
+            var samples = PCMEncoder.Decode(pcmData, inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate, allocator: Allocator.Persistent);
+
+            try
+            {
+                return Enqueue(samples, samples.Length);
+            }
+            finally
+            {
+                samples.Dispose();
+            }
         }
 
         private Task Enqueue(NativeArray<float> samples, int count)
