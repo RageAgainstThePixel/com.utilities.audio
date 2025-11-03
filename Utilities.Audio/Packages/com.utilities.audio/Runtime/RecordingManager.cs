@@ -342,8 +342,8 @@ namespace Utilities.Audio
         /// <param name="outputSampleRate">The target output sample rate. Defaults to 44100.</param>
         /// <param name="cancellationToken">Optional, task cancellation token.</param>
         public static async Task StartRecordingStreamAsync<TEncoder>(
-            Func<NativeArray<byte>, Task> bufferCallback,
-            Action<NativeArray<float>, int> sampleCallback,
+            Func<NativeArray<byte>, Task> bufferCallback = null,
+            Action<NativeArray<float>, int> sampleCallback = null,
             int outputSampleRate = 44100,
             CancellationToken cancellationToken = default)
             where TEncoder : IEncoder
