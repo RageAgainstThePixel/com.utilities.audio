@@ -35,14 +35,17 @@ namespace Utilities.Audio
         /// <returns>Byte array PCM data.</returns>
         public static byte[] Encode(float[] samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f, int? inputSampleRate = null, int? outputSampleRate = null)
         {
+            NativeArray<byte>? encode = null;
             var native = new NativeArray<float>(samples, Allocator.Persistent);
 
             try
             {
-                return Encode(native, size, trim, silenceThreshold, inputSampleRate, outputSampleRate).ToArray();
+                encode = Encode(native, size, trim, silenceThreshold, inputSampleRate, outputSampleRate);
+                return encode.Value.ToArray();
             }
             finally
             {
+                encode?.Dispose();
                 native.Dispose();
             }
         }
@@ -222,6 +225,11 @@ namespace Utilities.Audio
                 throw new Exception($"{nameof(pcmData)} length must be multiple of the specified {nameof(PCMFormatSize)}!");
             }
 
+            if (pcmData.Length == 0)
+            {
+                return new NativeArray<float>(0, allocator);
+            }
+
             var sampleCount = pcmData.Length / (int)size;
             var samples = new NativeArray<float>(sampleCount, allocator);
             var sampleIndex = 0;
@@ -338,6 +346,7 @@ namespace Utilities.Audio
                 buffer[i] = math.lerp(samples[floor], samples[ceil], index - floor);
             }
 
+            samples.Dispose();
             return buffer;
         }
 

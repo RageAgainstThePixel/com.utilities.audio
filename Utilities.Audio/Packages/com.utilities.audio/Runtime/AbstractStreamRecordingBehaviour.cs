@@ -116,7 +116,7 @@ namespace Utilities.Audio
                         }
 
                         RecordingManager.StartRecordingStream<PCMEncoder>(
-                            sampleCallback: (samples, count) => streamAudioSource.SampleCallbackAsync(samples, count, recordingSampleRate, AudioSettings.outputSampleRate),
+                            sampleCallback: (samples, count) => streamAudioSource.SampleCallback(samples, count, recordingSampleRate, AudioSettings.outputSampleRate),
                             outputSampleRate: recordingSampleRate,
                             cancellationToken: destroyCancellationToken);
                     }
