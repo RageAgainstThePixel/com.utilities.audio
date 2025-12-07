@@ -101,7 +101,7 @@ namespace Utilities.Audio
                             if (sampleRate == 0)
                             {
                                 Microphone.GetDeviceCaps(RecordingManager.DefaultRecordingDevice, out _, out var max);
-                                recordingSampleRate = max;
+                                recordingSampleRate = Mathf.Min(max, AudioSettings.outputSampleRate);
                             }
                             else
                             {
@@ -116,9 +116,9 @@ namespace Utilities.Audio
                         }
 
                         RecordingManager.StartRecordingStream<PCMEncoder>(
-                            (samples, count) => streamAudioSource.SampleCallback(samples, count),
-                            recordingSampleRate,
-                            destroyCancellationToken);
+                            sampleCallback: (samples, count) => streamAudioSource.SampleCallbackAsync(samples, count, recordingSampleRate, AudioSettings.outputSampleRate),
+                            outputSampleRate: recordingSampleRate,
+                            cancellationToken: destroyCancellationToken);
                     }
                 }
             }

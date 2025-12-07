@@ -178,6 +178,11 @@ namespace Utilities.Audio
                     }
                 }
 
+                if (debug)
+                {
+                    UnityEngine.Debug.Log($"recording sample rate: {recordingSampleRate}");
+                }
+
                 // Starts the recording process
                 var (path, newClip) = await RecordingManager.StartRecordingAsync<TEncoder>(
                     outputSampleRate: recordingSampleRate,

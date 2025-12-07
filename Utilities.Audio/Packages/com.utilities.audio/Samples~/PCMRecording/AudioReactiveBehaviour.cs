@@ -22,7 +22,7 @@ namespace Utilities.Encoder.PCM.Samples.Recording
         private float targetScale = 1f;
 
         /// <summary>
-        /// Called automatically by Unity’s audio system on the audio thread
+        /// Called automatically by Unity's audio system on the audio thread
         /// </summary>
         /// <param name="data"></param>
         /// <param name="channels"></param>
