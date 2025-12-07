@@ -197,13 +197,17 @@ namespace Utilities.Audio
             }
 
             var native = new NativeArray<byte>(pcmData, Allocator.Persistent);
+            NativeArray<float>? decode = null;
 
             try
             {
-                return Decode(native, size, inputSampleRate, outputSampleRate).ToArray();
+                decode = Decode(native, size, inputSampleRate, outputSampleRate);
+                var array = decode.Value.ToArray();
+                return array;
             }
             finally
             {
+                decode?.Dispose();
                 native.Dispose();
             }
         }
@@ -306,13 +310,17 @@ namespace Utilities.Audio
             if (inputSampleRate == outputSampleRate) { return samples; }
 
             var native = new NativeArray<float>(samples, Allocator.Persistent);
+            NativeArray<float>? resample = null;
 
             try
             {
-                return Resample(native, inputSampleRate, outputSampleRate).ToArray();
+                resample = Resample(native, inputSampleRate, outputSampleRate);
+                var array = resample.Value.ToArray();
+                return array;
             }
             finally
             {
+                resample?.Dispose();
                 native.Dispose();
             }
         }
