@@ -40,7 +40,7 @@ namespace Utilities.Audio
 
             try
             {
-                encode = Encode(native, size, trim, silenceThreshold, inputSampleRate, outputSampleRate);
+                encode = Encode(native, size, trim, silenceThreshold, inputSampleRate, outputSampleRate, Allocator.Persistent);
                 return encode.Value.ToArray();
             }
             finally
@@ -64,9 +64,13 @@ namespace Utilities.Audio
         [Preserve]
         public static NativeArray<byte> Encode(NativeArray<float> samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f, int? inputSampleRate = null, int? outputSampleRate = null, Allocator allocator = Allocator.Temp)
         {
+            var disposeSamples = false;
+
             if (inputSampleRate.HasValue && outputSampleRate.HasValue)
             {
-                samples = Resample(samples, inputSampleRate.Value, outputSampleRate.Value);
+                var resample = Resample(samples, inputSampleRate.Value, outputSampleRate.Value, Allocator.Persistent);
+                samples = resample;
+                disposeSamples = true;
             }
             else if (inputSampleRate.HasValue || outputSampleRate.HasValue)
             {
@@ -106,7 +110,17 @@ namespace Utilities.Audio
                 }
             }
 
-            return Encode(samples, start, length, size, allocator);
+            try
+            {
+                return Encode(samples, start, length, size, allocator);
+            }
+            finally
+            {
+                if (disposeSamples)
+                {
+                    samples.Dispose();
+                }
+            }
         }
 
         [Preserve]
@@ -201,9 +215,8 @@ namespace Utilities.Audio
 
             try
             {
-                decode = Decode(native, size, inputSampleRate, outputSampleRate);
-                var array = decode.Value.ToArray();
-                return array;
+                decode = Decode(native, size, inputSampleRate, outputSampleRate, Allocator.Persistent);
+                return decode.Value.ToArray();
             }
             finally
             {
@@ -309,14 +322,13 @@ namespace Utilities.Audio
         {
             if (inputSampleRate == outputSampleRate) { return samples; }
 
-            var native = new NativeArray<float>(samples, Allocator.Persistent);
             NativeArray<float>? resample = null;
+            var native = new NativeArray<float>(samples, Allocator.Persistent);
 
             try
             {
-                resample = Resample(native, inputSampleRate, outputSampleRate);
-                var array = resample.Value.ToArray();
-                return array;
+                resample = Resample(native, inputSampleRate, outputSampleRate, Allocator.Persistent);
+                return resample.Value.ToArray();
             }
             finally
             {
@@ -354,7 +366,6 @@ namespace Utilities.Audio
                 buffer[i] = math.lerp(samples[floor], samples[ceil], index - floor);
             }
 
-            samples.Dispose();
             return buffer;
         }
 

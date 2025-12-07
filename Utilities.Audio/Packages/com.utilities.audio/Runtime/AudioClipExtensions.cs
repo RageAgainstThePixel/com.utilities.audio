@@ -22,7 +22,7 @@ namespace Utilities.Audio
             var samples = new NativeArray<float>(audioClip.samples * audioClip.channels, Allocator.Persistent);
 #else
             var samples = new float[audioClip.samples * audioClip.channels];
-#endif
+#endif // UNITY_6000_0_OR_NEWER
 
             try
             {
@@ -36,7 +36,7 @@ namespace Utilities.Audio
                     samples = resampled;
 #else
                     samples = PCMEncoder.Resample(samples, audioClip.frequency, outputSampleRate);
-#endif
+#endif // UNITY_6000_0_OR_NEWER
                 }
 #if !UNITY_6000_0_OR_NEWER
                 var nativeSamples = new NativeArray<float>(samples, Allocator.Persistent);
@@ -51,8 +51,7 @@ namespace Utilities.Audio
                 }
 #else
                 return PCMEncoder.Encode(samples, size, trim, allocator: allocator);
-#endif
-
+#endif // !UNITY_6000_0_OR_NEWER
             }
             // ReSharper disable once RedundantEmptyFinallyBlock
             finally
@@ -72,7 +71,7 @@ namespace Utilities.Audio
         /// <param name="inputSampleRate">The sample rate of the <see cref="pcmData"/> provided.</param>
 #if UNITY_6000_0_OR_NEWER
         [System.Obsolete("Use DecodeFromPCM with NativeArray")]
-#endif
+#endif // UNITY_6000_0_OR_NEWER
         public static void DecodeFromPCM(this AudioClip audioClip, byte[] pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit, int inputSampleRate = 44100)
             => audioClip.SetData(PCMEncoder.Decode(pcmData, size, inputSampleRate, 44100), 0);
 
@@ -85,7 +84,18 @@ namespace Utilities.Audio
         /// <param name="size">Size of PCM sample data.</param>
         /// <param name="inputSampleRate">The sample rate of the <see cref="pcmData"/> provided.</param>
         public static void DecodeFromPCM(this AudioClip audioClip, NativeArray<byte> pcmData, PCMFormatSize size = PCMFormatSize.SixteenBit, int inputSampleRate = 44100)
-            => audioClip.SetData(PCMEncoder.Decode(pcmData, size, inputSampleRate, 44100), 0);
-#endif
+        {
+            var native = PCMEncoder.Decode(pcmData, size, inputSampleRate, 44100, Allocator.Persistent);
+
+            try
+            {
+                audioClip.SetData(native, 0);
+            }
+            finally
+            {
+                native.Dispose();
+            }
+        }
+#endif // UNITY_6000_0_OR_NEWER
     }
 }
