@@ -158,13 +158,13 @@ namespace Utilities.Audio
         public void SampleCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
             => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(true);
 
-        public Task SampleCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        public async Task SampleCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
             var native = new NativeArray<float>(samples, Allocator.Persistent);
 
             try
             {
-                return SampleCallbackAsync(native, count, inputSampleRate, outputSampleRate);
+                await SampleCallbackAsync(native, count, inputSampleRate, outputSampleRate);
             }
             finally
             {
@@ -172,36 +172,40 @@ namespace Utilities.Audio
             }
         }
 
-        public void SampleCallback(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
-            => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(true);
+        public async void SampleCallback(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+            => await SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(true);
 
-        public Task SampleCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        public async Task SampleCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
-            NativeArray<float>? resampled = null;
+            NativeArray<float> native;
 
             if (inputSampleRate.HasValue && outputSampleRate.HasValue && inputSampleRate != outputSampleRate)
             {
-                resampled = PCMEncoder.Resample(samples, inputSampleRate.Value, outputSampleRate.Value, Allocator.Persistent);
+                native = PCMEncoder.Resample(samples, inputSampleRate.Value, outputSampleRate.Value, Allocator.Persistent);
+            }
+            else
+            {
+                native = new NativeArray<float>(samples, Allocator.Persistent);
             }
 
             try
             {
-                return Enqueue(resampled ?? samples, count ?? samples.Length);
+                await Enqueue(native, count ?? samples.Length);
             }
             finally
             {
-                resampled?.Dispose();
+                native.Dispose();
             }
 
         }
 
-        public Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
+        public async Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
         {
             var samples = PCMEncoder.Decode(pcmData, inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate, allocator: Allocator.Persistent);
 
             try
             {
-                return Enqueue(samples, samples.Length);
+                await Enqueue(samples, samples.Length);
             }
             finally
             {
@@ -209,14 +213,14 @@ namespace Utilities.Audio
             }
         }
 
-        private Task Enqueue(NativeArray<float> samples, int count)
+        private async Task Enqueue(NativeArray<float> samples, int count)
         {
             for (var i = 0; i < count; i++)
             {
                 audioQueue.Enqueue(samples[i]);
             }
 
-            return Task.CompletedTask;
+            await Task.CompletedTask;
         }
 
         [UsedImplicitly]
