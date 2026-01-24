@@ -11,12 +11,17 @@ namespace Utilities.Audio.Tests
     internal class TestFixture_03_StreamAudioSourcePlaymode
     {
         private GameObject testGameObject;
+        private GameObject listenerGameObject;
         private StreamAudioSource streamAudioSource;
         private AudioSource audioSource;
 
         [SetUp]
         public void Setup()
         {
+            // Create audio listener for the scene (required for audio playback)
+            listenerGameObject = new GameObject("AudioListener");
+            listenerGameObject.AddComponent<AudioListener>();
+
             testGameObject = new GameObject("TestStreamAudioSourcePlaymode");
             audioSource = testGameObject.AddComponent<AudioSource>();
             streamAudioSource = testGameObject.AddComponent<StreamAudioSource>();
@@ -28,6 +33,11 @@ namespace Utilities.Audio.Tests
             if (testGameObject != null)
             {
                 Object.DestroyImmediate(testGameObject);
+            }
+
+            if (listenerGameObject != null)
+            {
+                Object.DestroyImmediate(listenerGameObject);
             }
         }
 
