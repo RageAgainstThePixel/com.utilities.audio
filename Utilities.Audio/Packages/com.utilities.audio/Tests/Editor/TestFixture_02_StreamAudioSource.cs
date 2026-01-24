@@ -111,7 +111,7 @@ namespace Utilities.Audio.Tests
                 // First 10 samples (5 stereo frames) should have data, rest should be zero
                 for (int i = 10; i < audioBuffer.Length; i++)
                 {
-                    Assert.AreEqual(0f, audioBuffer[i],
+                    Assert.IsTrue(Mathf.Approximately(audioBuffer[i], 0f), 
                         $"Buffer[{i}] should be zeroed after underrun but was {audioBuffer[i]}");
                 }
             }
@@ -152,7 +152,7 @@ namespace Utilities.Audio.Tests
                 // Entire buffer should be zeroed (no stale samples)
                 for (int i = 0; i < sampleCount; i++)
                 {
-                    Assert.AreEqual(0f, buffer[i],
+                    Assert.IsTrue(Mathf.Approximately(buffer[i], 0f),
                         $"Buffer[{i}] should be zeroed after OnAudioFilterRead but was {buffer[i]}");
                 }
             }
@@ -348,7 +348,7 @@ namespace Utilities.Audio.Tests
                 // After 64 samples (32 stereo frames = 64 buffer positions), everything should be zero
                 for (int i = 64; i < bufferLength; i++)
                 {
-                    Assert.AreEqual(0f, buffer[i],
+                    Assert.IsTrue(Mathf.Approximately(buffer[i], 0f),
                         $"Buffer element at {i} should be zeroed after underrun");
                 }
 
