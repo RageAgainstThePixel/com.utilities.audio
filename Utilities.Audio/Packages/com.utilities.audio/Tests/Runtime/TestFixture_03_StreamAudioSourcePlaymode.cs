@@ -1,7 +1,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using NUnit.Framework;
-using System.Collections;
+using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -42,7 +42,7 @@ namespace Utilities.Audio.Tests
         }
 
         [UnityTest]
-        public IEnumerator Test_01_OnAudioFilterReadUnderrunZeroing()
+        public async Task Test_01_OnAudioFilterReadUnderrunZeroing()
         {
             // Play-mode test: Queue limited samples and verify audio output has no clicks/noise on underrun
             const int sampleCount = 512;
@@ -54,7 +54,7 @@ namespace Utilities.Audio.Tests
             try
             {
                 // Queue only a small amount of samples to force underrun
-                streamAudioSource.SampleCallbackAsync(nativeArray, 50).Wait();
+                await streamAudioSource.SampleCallbackAsync(nativeArray, 50);
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
 
@@ -65,7 +65,7 @@ namespace Utilities.Audio.Tests
                 // Wait several frames for audio processing and underrun to occur
                 for (int i = 0; i < 5; i++)
                 {
-                    yield return null;
+                    await Task.Yield();
                 }
 
                 // At this point, OnAudioFilterRead has been called multiple times
@@ -81,7 +81,7 @@ namespace Utilities.Audio.Tests
         }
 
         [UnityTest]
-        public IEnumerator Test_02_MemoryCleanupOnDestroy()
+        public async Task Test_02_MemoryCleanupOnDestroy()
         {
             const int sampleCount = 1024;
             var samples = TestUtilities.GenerateSineWaveSamples(440, sampleCount);
@@ -89,11 +89,14 @@ namespace Utilities.Audio.Tests
 
             try
             {
-                streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount).Wait();
+                // Disable audio output so OnAudioFilterRead does not dequeue samples mid-assert on platforms where audio runs headless (e.g., WebGL CI).
+                audioSource.enabled = false;
+
+                await streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount);
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
 
-                yield return null;
+                await Task.Yield();
 
                 Assert.IsFalse(streamAudioSource.IsEmpty);
 
@@ -102,7 +105,7 @@ namespace Utilities.Audio.Tests
                 testGameObject = null;
                 streamAudioSource = null;
 
-                yield return null;
+                await Task.Yield();
 
                 Assert.Pass("Memory cleanup on destroy completed without errors");
             }
@@ -113,7 +116,7 @@ namespace Utilities.Audio.Tests
         }
 
         [UnityTest]
-        public IEnumerator Test_03_NoResamplingDirectEnqueue()
+        public async Task Test_03_NoResamplingDirectEnqueue()
         {
             // Verify that no-resampling path enqueues directly without extra copies
             const int sampleCount = 256;
@@ -123,7 +126,7 @@ namespace Utilities.Audio.Tests
             try
             {
                 // Call without resampling - should enqueue directly
-                streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount).Wait();
+                await streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount);
 
                 // Verify samples are in queue
                 Assert.IsFalse(streamAudioSource.IsEmpty);
@@ -131,7 +134,7 @@ namespace Utilities.Audio.Tests
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
 
-                yield return null;
+                await Task.Yield();
 
                 Assert.Pass("No-resampling path enqueues directly");
             }
@@ -142,7 +145,7 @@ namespace Utilities.Audio.Tests
         }
 
         [UnityTest]
-        public IEnumerator Test_04_UnderrunProducesZeros()
+        public async Task Test_04_UnderrunProducesZeros()
         {
             const int sampleCount = 512;
             var samples = TestUtilities.GenerateSineWaveSamples(440, sampleCount);
@@ -151,13 +154,13 @@ namespace Utilities.Audio.Tests
             try
             {
                 // Queue a small number of samples
-                streamAudioSource.SampleCallbackAsync(nativeArray, 10).Wait();
+                await streamAudioSource.SampleCallbackAsync(nativeArray, 10);
 
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
 
                 // Wait a frame for audio filter read to process
-                yield return null;
+                await Task.Yield();
 
                 // On underrun, buffer should be zeroed - verified through audio system processing
                 Assert.Pass("Underrun handling completed without exceptions");
