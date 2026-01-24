@@ -1,14 +1,18 @@
 {
-  "name": "Utilities.Audio.Tests",
+  "name": "Utilities.Audio.Tests.Runtime",
   "rootNamespace": "Utilities.Audio.Tests",
   "references": [
-    "Utilities.Audio"
+    "UnityEngine.TestRunner",
+    "Utilities.Audio",
+    "Utilities.Audio.Tests"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
-  "overrideReferences": false,
-  "precompiledReferences": [],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
   "autoReferenced": false,
   "defineConstraints": [
     "UNITY_INCLUDE_TESTS"

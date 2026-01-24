@@ -65,7 +65,7 @@ namespace Utilities.Audio
 
         private void Awake()
         {
-            audioQueue = new NativeQueue<float>(Allocator.Persistent);
+            EnsureQueueInitialized();
             OnValidate();
 #if PLATFORM_WEBGL && !UNITY_EDITOR
             AudioPlaybackLoop();
@@ -170,6 +170,11 @@ namespace Utilities.Audio
                             data[i + j] = sample;
                         }
                     }
+                    else
+                    {
+                        // Break on first underrun to avoid unnecessary TryDequeue calls
+                        break;
+                    }
                 }
             }
             catch (Exception e)
@@ -182,10 +187,16 @@ namespace Utilities.Audio
         private void OnDestroy()
         {
 #if !UNITY_2022_1_OR_NEWER
-            lifetimeCancellationTokenSource.Cancel();
+            if (lifetimeCancellationTokenSource != null && !lifetimeCancellationTokenSource.IsCancellationRequested)
+            {
+                lifetimeCancellationTokenSource.Cancel();
+            }
 #endif // !UNITY_2022_1_OR_NEWER
             // Properly dispose of the queue to release Persistent allocator memory
-            audioQueue.Dispose();
+            if (audioQueue.IsCreated)
+            {
+                audioQueue.Dispose();
+            }
         }
 
         /// <summary>
