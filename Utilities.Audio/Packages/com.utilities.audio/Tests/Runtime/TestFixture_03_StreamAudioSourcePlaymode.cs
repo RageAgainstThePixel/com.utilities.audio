@@ -37,7 +37,7 @@ namespace Utilities.Audio.Tests
             // Play-mode test: Queue limited samples and verify audio output has no clicks/noise on underrun
             const int sampleCount = 512;
             const float testFrequency = 440f;
-            
+
             var samples = TestUtilities.GenerateSineWaveSamples(testFrequency, sampleCount);
             var nativeArray = new NativeArray<float>(samples, Allocator.Persistent);
 
@@ -45,17 +45,17 @@ namespace Utilities.Audio.Tests
             {
                 // Queue only a small amount of samples to force underrun
                 streamAudioSource.SampleCallbackAsync(nativeArray, 50).Wait();
-                
+
                 // Enable the audio source to start playing
                 audioSource.clip = AudioClip.Create("test", sampleCount, 1, 44100, false);
                 audioSource.Play();
-                
+
                 // Wait several frames for audio processing and underrun to occur
                 for (int i = 0; i < 5; i++)
                 {
                     yield return null;
                 }
-                
+
                 // At this point, OnAudioFilterRead has been called multiple times
                 // and should have properly zeroed buffers on underrun (no clicks/artifacts)
                 // The test passes if we reach here without exceptions or audio glitches
@@ -63,6 +63,7 @@ namespace Utilities.Audio.Tests
             }
             finally
             {
+                samples.Dispose();
                 audioSource.Stop();
                 nativeArray.Dispose();
             }
@@ -79,18 +80,19 @@ namespace Utilities.Audio.Tests
             {
                 streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount).Wait();
                 Assert.IsFalse(streamAudioSource.IsEmpty);
-                
+
                 // Destroy should properly clean up Persistent allocator memory
                 Object.DestroyImmediate(testGameObject);
                 testGameObject = null;
                 streamAudioSource = null;
-                
+
                 yield return null;
-                
+
                 Assert.Pass("Memory cleanup on destroy completed without errors");
             }
             finally
             {
+                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -107,16 +109,17 @@ namespace Utilities.Audio.Tests
             {
                 // Call without resampling - should enqueue directly
                 streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount).Wait();
-                
+
                 // Verify samples are in queue
                 Assert.IsFalse(streamAudioSource.IsEmpty);
-                
+
                 yield return null;
-                
+
                 Assert.Pass("No-resampling path enqueues directly");
             }
             finally
             {
+                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -132,15 +135,16 @@ namespace Utilities.Audio.Tests
             {
                 // Queue a small number of samples
                 streamAudioSource.SampleCallbackAsync(nativeArray, 10).Wait();
-                
+
                 // Wait a frame for audio filter read to process
                 yield return null;
-                
+
                 // On underrun, buffer should be zeroed - verified through audio system processing
                 Assert.Pass("Underrun handling completed without exceptions");
             }
             finally
             {
+                samples.Dispose();
                 nativeArray.Dispose();
             }
         }

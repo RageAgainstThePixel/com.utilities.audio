@@ -52,6 +52,7 @@ namespace Utilities.Audio.Tests
             }
             finally
             {
+                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -73,6 +74,7 @@ namespace Utilities.Audio.Tests
             }
             finally
             {
+                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -80,53 +82,42 @@ namespace Utilities.Audio.Tests
         [Test]
         public void Test_01_01_UnderrunProducesZeros()
         {
-            // Test that the OnAudioFilterRead buffer clearing logic works correctly
-            // We simulate the scenario where OnAudioFilterRead processes fewer samples than the buffer size
-
+            // Test that OnAudioFilterRead clears the buffer to prevent stale samples on underrun
+            // We invoke the actual OnAudioFilterRead method via reflection to validate the production fix
             const int sampleCount = 512;
             var samples = TestUtilities.GenerateSineWaveSamples(440, sampleCount);
             var nativeArray = new NativeArray<float>(samples, Allocator.Persistent);
 
             try
             {
-                // Queue a small number of samples
+                // Queue only 10 samples
                 streamAudioSource.SampleCallbackAsync(nativeArray, 10).Wait();
 
-                // Simulate OnAudioFilterRead behavior: fill buffer with non-zero stale data first
+                // Create a buffer filled with stale non-zero data
                 var audioBuffer = new float[1024];
                 for (int i = 0; i < audioBuffer.Length; i++)
                 {
                     audioBuffer[i] = 0.5f;  // Stale data
                 }
 
-                // Now simulate the fixed OnAudioFilterRead:
-                // 1. Clear the buffer
-                Array.Clear(audioBuffer, 0, audioBuffer.Length);
+                // Invoke the actual OnAudioFilterRead method via reflection
+                var method = typeof(StreamAudioSource).GetMethod("OnAudioFilterRead",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                Assert.NotNull(method, "OnAudioFilterRead method should exist");
 
-                // 2. Dequeue samples (will get 10, then underrun)
-                for (int i = 0; i < 10; i++)
+                method.Invoke(streamAudioSource, new object[] { audioBuffer, 2 });
+
+                // After OnAudioFilterRead processes with underrun, verify buffer is properly zeroed
+                // First 10 samples (5 stereo frames) should have data, rest should be zero
+                for (int i = 10; i < audioBuffer.Length; i++)
                 {
-                    if (streamAudioSource.IsEmpty)
-                    {
-                        break;
-                    }
+                    Assert.AreEqual(0f, audioBuffer[i],
+                        $"Buffer[{i}] should be zeroed after underrun but was {audioBuffer[i]}");
                 }
-
-                // After clearing and dequeuing, buffer should have zeros everywhere
-                bool allZeros = true;
-                for (int i = 0; i < audioBuffer.Length; i++)
-                {
-                    if (!Mathf.Approximately(audioBuffer[i], 0f))
-                    {
-                        allZeros = false;
-                        break;
-                    }
-                }
-
-                Assert.IsTrue(allZeros, "Buffer should be completely zeroed to prevent stale samples on underrun");
             }
             finally
             {
+                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -134,39 +125,48 @@ namespace Utilities.Audio.Tests
         [Test]
         public void Test_01_02_OnAudioFilterReadZerosBuffer()
         {
-            // Simulate OnAudioFilterRead by creating a buffer and verifying clearing behavior
+            // Verify OnAudioFilterRead zeros entire buffer when queue is uninitialized
+            // This tests the early return path that prevents stale samples
             const int sampleCount = 2048;
-
             var buffer = new float[sampleCount];
 
-            // Fill buffer with non-zero values to simulate stale data
+            // Fill buffer with stale non-zero data
             for (int i = 0; i < sampleCount; i++)
             {
                 buffer[i] = 0.5f;
             }
 
-            // Simulate the fixed OnAudioFilterRead behavior:
-            // 1. Clear the buffer first
-            Array.Clear(buffer, 0, buffer.Length);
+            // Create a fresh StreamAudioSource that hasn't been initialized yet
+            var uninitializedGameObject = new GameObject("TestUninitialized");
+            var uninitializedStreamAudioSource = uninitializedGameObject.AddComponent<StreamAudioSource>();
 
-            // 2. Without samples, buffer should remain zeroed
-            bool hasNonZero = false;
-            for (int i = 0; i < sampleCount; i++)
+            try
             {
-                if (!Mathf.Approximately(buffer[i], 0f))
+                // Invoke OnAudioFilterRead on uninitialized queue
+                var method = typeof(StreamAudioSource).GetMethod("OnAudioFilterRead",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                Assert.NotNull(method, "OnAudioFilterRead method should exist");
+
+                method.Invoke(uninitializedStreamAudioSource, new object[] { buffer, 2 });
+
+                // Entire buffer should be zeroed (no stale samples)
+                for (int i = 0; i < sampleCount; i++)
                 {
-                    hasNonZero = true;
-                    break;
+                    Assert.AreEqual(0f, buffer[i],
+                        $"Buffer[{i}] should be zeroed after OnAudioFilterRead but was {buffer[i]}");
                 }
             }
-
-            Assert.IsFalse(hasNonZero, "Underrun buffer should be zeroed to prevent stale samples");
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(uninitializedGameObject);
+            }
         }
 
         [Test]
         public void Test_02_01_ResamplePathAvoidsCopy()
         {
-            // Test that resampling path doesn't create unnecessary copies
+            // Test that resampling path properly handles allocations
+            // The production code creates a resampled NativeArray and properly disposes it
             const int sampleCount = 1024;
             const int inputRate = 44100;
             const int outputRate = 48000;
@@ -176,14 +176,16 @@ namespace Utilities.Audio.Tests
 
             try
             {
-                // Call with resampling - should create only ONE native array (from resampler)
+                // Call with resampling - verifies the async path executes without exception
                 streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount, inputRate, outputRate).Wait();
 
-                // If we get here without exception, the zero-allocation design was maintained
-                Assert.Pass("Resampling path executed without unnecessary allocations");
+                // Verify samples were enqueued after resampling
+                Assert.IsFalse(streamAudioSource.IsEmpty, "Resampled samples should be enqueued");
+                Assert.Pass("Resampling path executed with proper allocation handling");
             }
             finally
             {
+                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -205,6 +207,7 @@ namespace Utilities.Audio.Tests
             }
             finally
             {
+                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -282,6 +285,7 @@ namespace Utilities.Audio.Tests
             }
             finally
             {
+                monoSamples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -298,13 +302,14 @@ namespace Utilities.Audio.Tests
             {
                 streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount).Wait();
                 Assert.IsFalse(streamAudioSource.IsEmpty);
-                
+
                 // Clear buffer to empty state
                 streamAudioSource.ClearBuffer();
                 Assert.IsTrue(streamAudioSource.IsEmpty);
             }
             finally
             {
+                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -312,44 +317,48 @@ namespace Utilities.Audio.Tests
         [Test]
         public void Test_06_01_WebGLUnderrunZeroing()
         {
-            // Test the fix for WebGL underrun - zeroing unused buffer elements
-            const int bufferLength = 2048;
-            var buffer = new float[bufferLength];
+            // Test WebGL fix: OnAudioFilterRead breaks early on underrun and all remaining buffer is zeroed
+            const int sampleCount = 128;
+            var samples = TestUtilities.GenerateSineWaveSamples(440, sampleCount);
+            var nativeArray = new NativeArray<float>(samples, Allocator.Persistent);
 
-            // Fill with stale data
-            for (int i = 0; i < bufferLength; i++)
+            try
             {
-                buffer[i] = 0.5f;
-            }
+                // Queue only 64 samples (half the buffer)
+                streamAudioSource.SampleCallbackAsync(nativeArray, 64).Wait();
 
-            // Simulate dequeue loop with underrun at position 512
-            var count = 0;
-            const int underrunPos = 512;
+                // Create a large buffer to trigger underrun
+                const int bufferLength = 2048;
+                var buffer = new float[bufferLength];
 
-            for (int i = 0; i < bufferLength; i++)
-            {
-                if (i < underrunPos)
+                // Fill with stale data
+                for (int i = 0; i < bufferLength; i++)
                 {
-                    buffer[i] = 0.1f;  // Simulated dequeued sample
-                    count++;
+                    buffer[i] = 0.5f;
                 }
-                else
+
+                // Invoke OnAudioFilterRead with stereo (2 channels)
+                var method = typeof(StreamAudioSource).GetMethod("OnAudioFilterRead",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                Assert.NotNull(method, "OnAudioFilterRead method should exist");
+
+                method.Invoke(streamAudioSource, new object[] { buffer, 2 });
+
+                // Verify buffer is properly zeroed after underrun
+                // After 64 samples (32 stereo frames = 64 buffer positions), everything should be zero
+                for (int i = 64; i < bufferLength; i++)
                 {
-                    // Underrun - zero remaining buffer (THE FIX)
-                    Array.Clear(buffer, i, bufferLength - i);
-                    break;
+                    Assert.AreEqual(0f, buffer[i],
+                        $"Buffer element at {i} should be zeroed after underrun");
                 }
-            }
 
-            // Verify buffer is properly zeroed after underrun
-            for (int i = underrunPos; i < bufferLength; i++)
+                Assert.Pass("WebGL underrun buffer properly zeroed");
+            }
+            finally
             {
-                Assert.AreEqual(0f, buffer[i],
-                    $"Buffer element at {i} should be zeroed after underrun at position {underrunPos}");
+                samples.Dispose();
+                nativeArray.Dispose();
             }
-
-            Assert.IsTrue(count == underrunPos, "Should have dequeued samples up to underrun position");
-            Assert.Pass("WebGL underrun buffer properly zeroed");
         }
     }
 }
