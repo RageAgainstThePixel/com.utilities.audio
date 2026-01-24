@@ -90,9 +90,12 @@ namespace Utilities.Audio.Tests
             try
             {
                 streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount).Wait();
-                Assert.IsFalse(streamAudioSource.IsEmpty);
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
+
+                yield return null;
+
+                Assert.IsFalse(streamAudioSource.IsEmpty);
 
                 // Destroy should properly clean up Persistent allocator memory
                 Object.DestroyImmediate(testGameObject);
