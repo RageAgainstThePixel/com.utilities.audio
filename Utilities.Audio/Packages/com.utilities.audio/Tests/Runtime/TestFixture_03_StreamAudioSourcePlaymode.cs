@@ -45,6 +45,8 @@ namespace Utilities.Audio.Tests
             {
                 // Queue only a small amount of samples to force underrun
                 streamAudioSource.SampleCallbackAsync(nativeArray, 50).Wait();
+                // Dispose Temp allocation before yield to avoid lifetime errors
+                samples.Dispose();
 
                 // Enable the audio source to start playing
                 audioSource.clip = AudioClip.Create("test", sampleCount, 1, 44100, false);
@@ -63,7 +65,6 @@ namespace Utilities.Audio.Tests
             }
             finally
             {
-                samples.Dispose();
                 audioSource.Stop();
                 nativeArray.Dispose();
             }
@@ -80,6 +81,8 @@ namespace Utilities.Audio.Tests
             {
                 streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount).Wait();
                 Assert.IsFalse(streamAudioSource.IsEmpty);
+                // Dispose Temp allocation before yield to avoid lifetime errors
+                samples.Dispose();
 
                 // Destroy should properly clean up Persistent allocator memory
                 Object.DestroyImmediate(testGameObject);
@@ -92,7 +95,6 @@ namespace Utilities.Audio.Tests
             }
             finally
             {
-                samples.Dispose();
                 nativeArray.Dispose();
             }
         }

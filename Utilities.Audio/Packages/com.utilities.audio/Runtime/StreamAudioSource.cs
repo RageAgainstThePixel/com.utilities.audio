@@ -153,11 +153,12 @@ namespace Utilities.Audio
             try
             {
                 var length = data.Length;
-                Array.Clear(data, 0, length);
 
                 // Only attempt dequeue if queue has been initialized
                 if (!audioQueue.IsCreated)
                 {
+                    // Clear entire buffer if queue was never initialized
+                    Array.Clear(data, 0, length);
                     return;
                 }
 
@@ -172,7 +173,8 @@ namespace Utilities.Audio
                     }
                     else
                     {
-                        // Break on first underrun to avoid unnecessary TryDequeue calls
+                        // Break on first underrun and only clear remaining buffer elements
+                        Array.Clear(data, i, length - i);
                         break;
                     }
                 }
