@@ -115,13 +115,15 @@ namespace Utilities.Audio.Tests
                 // Verify samples are in queue
                 Assert.IsFalse(streamAudioSource.IsEmpty);
 
+                // Dispose Temp allocation before yield to avoid lifetime errors
+                samples.Dispose();
+
                 yield return null;
 
                 Assert.Pass("No-resampling path enqueues directly");
             }
             finally
             {
-                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
@@ -138,6 +140,9 @@ namespace Utilities.Audio.Tests
                 // Queue a small number of samples
                 streamAudioSource.SampleCallbackAsync(nativeArray, 10).Wait();
 
+                // Dispose Temp allocation before yield to avoid lifetime errors
+                samples.Dispose();
+
                 // Wait a frame for audio filter read to process
                 yield return null;
 
@@ -146,7 +151,6 @@ namespace Utilities.Audio.Tests
             }
             finally
             {
-                samples.Dispose();
                 nativeArray.Dispose();
             }
         }
