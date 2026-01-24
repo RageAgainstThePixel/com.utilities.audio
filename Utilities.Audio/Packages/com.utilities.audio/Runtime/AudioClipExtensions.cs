@@ -5,6 +5,9 @@ using UnityEngine;
 
 namespace Utilities.Audio
 {
+    /// <summary>
+    /// Extension methods for <see cref="AudioClip"/> objects.
+    /// </summary>
     public static class AudioClipExtensions
     {
         /// <summary>
