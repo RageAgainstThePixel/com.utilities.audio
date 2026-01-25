@@ -60,7 +60,7 @@ namespace Utilities.Audio.Tests
                 // Wait several frames for audio processing and underrun to occur
                 for (int i = 0; i < 5; i++)
                 {
-                    await new WaitForEndOfFrame();
+                    await Task.Yield();
                 }
 
                 // At this point, OnAudioFilterRead has been called multiple times
