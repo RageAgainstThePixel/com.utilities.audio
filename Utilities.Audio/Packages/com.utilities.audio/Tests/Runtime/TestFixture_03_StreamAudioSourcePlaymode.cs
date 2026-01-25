@@ -4,6 +4,7 @@ using NUnit.Framework;
 using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
+using Utilities.Extensions;
 
 namespace Utilities.Audio.Tests
 {
@@ -18,7 +19,7 @@ namespace Utilities.Audio.Tests
         public void Setup()
         {
             // Create audio listener for the scene (required for audio playback)
-            listenerGameObject = new GameObject("AudioListener");
+            listenerGameObject = new GameObject(nameof(AudioListener));
             listenerGameObject.AddComponent<AudioListener>();
 
             testGameObject = new GameObject("TestStreamAudioSourcePlaymode");
@@ -29,15 +30,8 @@ namespace Utilities.Audio.Tests
         [TearDown]
         public void Teardown()
         {
-            if (testGameObject != null)
-            {
-                Object.DestroyImmediate(testGameObject);
-            }
-
-            if (listenerGameObject != null)
-            {
-                Object.DestroyImmediate(listenerGameObject);
-            }
+            testGameObject.Destroy();
+            listenerGameObject.Destroy();
         }
 
         [Test]
@@ -98,14 +92,6 @@ namespace Utilities.Audio.Tests
                 await Task.Yield();
 
                 Assert.IsFalse(streamAudioSource.IsEmpty);
-
-                // Destroy should properly clean up Persistent allocator memory
-                Object.DestroyImmediate(testGameObject);
-                testGameObject = null;
-                streamAudioSource = null;
-
-                await Task.Yield();
-
                 Assert.Pass("Memory cleanup on destroy completed without errors");
             }
             finally
@@ -134,7 +120,6 @@ namespace Utilities.Audio.Tests
                 samples.Dispose();
 
                 await Task.Yield();
-
                 Assert.Pass("No-resampling path enqueues directly");
             }
             finally
