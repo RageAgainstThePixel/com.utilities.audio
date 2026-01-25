@@ -1,9 +1,11 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using NUnit.Framework;
+using System;
 using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
+using Utilities.Async;
 using Utilities.Extensions;
 
 namespace Utilities.Audio.Tests
@@ -58,13 +60,18 @@ namespace Utilities.Audio.Tests
                 // Wait several frames for audio processing and underrun to occur
                 for (int i = 0; i < 5; i++)
                 {
-                    await Task.Yield();
+                    await new WaitForEndOfFrame();
                 }
 
                 // At this point, OnAudioFilterRead has been called multiple times
                 // and should have properly zeroed buffers on underrun (no clicks/artifacts)
                 // The test passes if we reach here without exceptions or audio glitches
                 Assert.Pass("OnAudioFilterRead handled underrun without exceptions");
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                throw;
             }
             finally
             {
@@ -82,17 +89,18 @@ namespace Utilities.Audio.Tests
 
             try
             {
-                // Disable audio output so OnAudioFilterRead does not dequeue samples mid-assert on platforms where audio runs headless (e.g., WebGL CI).
-                audioSource.enabled = false;
-
+                // Call sample callback to enqueue samples
                 await streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount);
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
-
+                streamAudioSource.Destroy();
                 await Task.Yield();
-
-                Assert.IsFalse(streamAudioSource.IsEmpty);
                 Assert.Pass("Memory cleanup on destroy completed without errors");
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                throw;
             }
             finally
             {
@@ -112,15 +120,17 @@ namespace Utilities.Audio.Tests
             {
                 // Call without resampling - should enqueue directly
                 await streamAudioSource.SampleCallbackAsync(nativeArray, sampleCount);
-
-                // Verify samples are in queue
-                Assert.IsFalse(streamAudioSource.IsEmpty);
-
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
-
+                // Verify samples are in queue
+                Assert.IsFalse(streamAudioSource.IsEmpty);
                 await Task.Yield();
                 Assert.Pass("No-resampling path enqueues directly");
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                throw;
             }
             finally
             {
@@ -139,15 +149,17 @@ namespace Utilities.Audio.Tests
             {
                 // Queue a small number of samples
                 await streamAudioSource.SampleCallbackAsync(nativeArray, 10);
-
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
-
                 // Wait a frame for audio filter read to process
                 await Task.Yield();
-
                 // On underrun, buffer should be zeroed - verified through audio system processing
                 Assert.Pass("Underrun handling completed without exceptions");
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                throw;
             }
             finally
             {

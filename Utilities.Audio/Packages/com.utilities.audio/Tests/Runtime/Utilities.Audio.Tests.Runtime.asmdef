@@ -3,6 +3,7 @@
     "rootNamespace": "Utilities.Audio.Tests",
     "references": [
         "UnityEngine.TestRunner",
+        "Utilities.Async",
         "Utilities.Audio",
         "Utilities.Audio.Tests",
         "Utilities.Extensions",
