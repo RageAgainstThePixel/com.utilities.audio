@@ -111,7 +111,7 @@ namespace Utilities.Audio.Tests
                 samples.Dispose();
                 streamAudioSource.Destroy();
                 // Wait a frame for audio filter read to process
-                await new WaitForEndOfFrame();
+                await Task.Yield();
                 Assert.Pass("Memory cleanup on destroy completed without errors");
             }
             catch (SuccessException)
@@ -146,7 +146,7 @@ namespace Utilities.Audio.Tests
                 // Verify samples are in queue
                 Assert.IsFalse(streamAudioSource.IsEmpty);
                 // Wait a frame for audio filter read to process
-                await new WaitForEndOfFrame();
+                await Task.Yield();
                 Assert.Pass("No-resampling path enqueues directly");
             }
             catch (SuccessException)
@@ -178,7 +178,7 @@ namespace Utilities.Audio.Tests
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
                 // Wait a frame for audio filter read to process
-                await new WaitForEndOfFrame();
+                await Task.Yield();
                 // On underrun, buffer should be zeroed - verified through audio system processing
                 Assert.Pass("Underrun handling completed without exceptions");
             }
