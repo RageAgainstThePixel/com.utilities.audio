@@ -4,7 +4,6 @@ using NUnit.Framework;
 using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace Utilities.Audio.Tests
 {
@@ -41,7 +40,7 @@ namespace Utilities.Audio.Tests
             }
         }
 
-        [UnityTest]
+        [Test]
         public async Task Test_01_OnAudioFilterReadUnderrunZeroing()
         {
             // Play-mode test: Queue limited samples and verify audio output has no clicks/noise on underrun
@@ -80,7 +79,7 @@ namespace Utilities.Audio.Tests
             }
         }
 
-        [UnityTest]
+        [Test]
         public async Task Test_02_MemoryCleanupOnDestroy()
         {
             const int sampleCount = 1024;
@@ -115,7 +114,7 @@ namespace Utilities.Audio.Tests
             }
         }
 
-        [UnityTest]
+        [Test]
         public async Task Test_03_NoResamplingDirectEnqueue()
         {
             // Verify that no-resampling path enqueues directly without extra copies
@@ -144,7 +143,7 @@ namespace Utilities.Audio.Tests
             }
         }
 
-        [UnityTest]
+        [Test]
         public async Task Test_04_UnderrunProducesZeros()
         {
             const int sampleCount = 512;
