@@ -243,13 +243,13 @@ namespace Utilities.Audio
         /// <param name="outputSampleRate">Optional output sample rate for resampling.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         [UsedImplicitly]
-        public async Task SampleCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        public Task SampleCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
             var native = new NativeArray<float>(samples, Allocator.Persistent);
 
             try
             {
-                await SampleCallbackAsync(native, count, inputSampleRate, outputSampleRate);
+                return SampleCallbackAsync(native, count, inputSampleRate, outputSampleRate);
             }
             finally
             {
@@ -286,26 +286,26 @@ namespace Utilities.Audio
         /// <param name="outputSampleRate">Optional output sample rate for resampling.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         [UsedImplicitly]
-        public async Task SampleCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        public Task SampleCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
-            if (inputSampleRate.HasValue && outputSampleRate.HasValue && inputSampleRate != outputSampleRate)
+            if (inputSampleRate.HasValue &&
+                outputSampleRate.HasValue &&
+                inputSampleRate != outputSampleRate)
             {
                 // Resampling required: create new NativeArray from resampler output
                 var resampled = PCMEncoder.Resample(samples, inputSampleRate.Value, outputSampleRate.Value, Allocator.Persistent);
                 try
                 {
-                    await Enqueue(resampled, count ?? resampled.Length);
+                    return Enqueue(resampled, count ?? resampled.Length);
                 }
                 finally
                 {
                     resampled.Dispose();
                 }
             }
-            else
-            {
-                // No resampling needed: enqueue directly without copying to maintain zero-allocation design
-                await Enqueue(samples, count ?? samples.Length);
-            }
+
+            // No resampling needed: enqueue directly without copying to maintain zero-allocation design
+            return Enqueue(samples, count ?? samples.Length);
         }
 
         /// <summary>
@@ -316,13 +316,13 @@ namespace Utilities.Audio
         /// <param name="outputSampleRate">The desired output sample rate.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         [UsedImplicitly]
-        public async Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
+        public Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
         {
             var samples = PCMEncoder.Decode(pcmData, inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate, allocator: Allocator.Persistent);
 
             try
             {
-                await Enqueue(samples, samples.Length);
+                return Enqueue(samples, samples.Length);
             }
             finally
             {
@@ -330,7 +330,7 @@ namespace Utilities.Audio
             }
         }
 
-        private async Task Enqueue(NativeArray<float> samples, int count)
+        private Task Enqueue(NativeArray<float> samples, int count)
         {
             EnsureQueueInitialized();
 
@@ -339,7 +339,7 @@ namespace Utilities.Audio
                 audioQueue.Enqueue(samples[i]);
             }
 
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
         /// <summary>

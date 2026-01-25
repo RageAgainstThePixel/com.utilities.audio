@@ -68,6 +68,10 @@ namespace Utilities.Audio.Tests
                 // The test passes if we reach here without exceptions or audio glitches
                 Assert.Pass("OnAudioFilterRead handled underrun without exceptions");
             }
+            catch (SuccessException)
+            {
+                throw;
+            }
             catch (Exception e)
             {
                 Debug.LogException(e);
@@ -94,8 +98,13 @@ namespace Utilities.Audio.Tests
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
                 streamAudioSource.Destroy();
-                await Task.Yield();
+                // Wait a frame for audio filter read to process
+                await new WaitForEndOfFrame();
                 Assert.Pass("Memory cleanup on destroy completed without errors");
+            }
+            catch (SuccessException)
+            {
+                throw;
             }
             catch (Exception e)
             {
@@ -124,8 +133,13 @@ namespace Utilities.Audio.Tests
                 samples.Dispose();
                 // Verify samples are in queue
                 Assert.IsFalse(streamAudioSource.IsEmpty);
-                await Task.Yield();
+                // Wait a frame for audio filter read to process
+                await new WaitForEndOfFrame();
                 Assert.Pass("No-resampling path enqueues directly");
+            }
+            catch (SuccessException)
+            {
+                throw;
             }
             catch (Exception e)
             {
@@ -152,9 +166,13 @@ namespace Utilities.Audio.Tests
                 // Dispose Temp allocation before yield to avoid lifetime errors
                 samples.Dispose();
                 // Wait a frame for audio filter read to process
-                await Task.Yield();
+                await new WaitForEndOfFrame();
                 // On underrun, buffer should be zeroed - verified through audio system processing
                 Assert.Pass("Underrun handling completed without exceptions");
+            }
+            catch (SuccessException)
+            {
+                throw;
             }
             catch (Exception e)
             {
