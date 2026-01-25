@@ -20,6 +20,7 @@ namespace Utilities.Audio.Tests
         [SetUp]
         public void Setup()
         {
+            RemoveExistingAudioListeners();
             // Create audio listener for the scene (required for audio playback)
             listenerGameObject = new GameObject(nameof(AudioListener));
             listenerGameObject.AddComponent<AudioListener>();
@@ -29,11 +30,22 @@ namespace Utilities.Audio.Tests
             streamAudioSource = testGameObject.AddComponent<StreamAudioSource>();
         }
 
+        private static void RemoveExistingAudioListeners()
+        {
+            var listeners = UnityEngine.Object.FindObjectsOfType<AudioListener>(true);
+
+            for (int i = 0; i < listeners.Length; i++)
+            {
+                listeners[i].Destroy();
+            }
+        }
+
         [TearDown]
         public void Teardown()
         {
             testGameObject.Destroy();
             listenerGameObject.Destroy();
+            RemoveExistingAudioListeners();
         }
 
         [Test]
