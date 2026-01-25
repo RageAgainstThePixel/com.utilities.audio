@@ -32,7 +32,11 @@ namespace Utilities.Audio.Tests
 
         private static void RemoveExistingAudioListeners()
         {
+#if UNITY_6000_0_OR_NEWER
+            var listeners = UnityEngine.Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
+#else
             var listeners = UnityEngine.Object.FindObjectsOfType<AudioListener>(true);
+#endif
 
             for (int i = 0; i < listeners.Length; i++)
             {
