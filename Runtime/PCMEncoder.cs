@@ -16,8 +16,15 @@ using Utilities.Extensions;
 
 namespace Utilities.Audio
 {
+    /// <summary>
+    /// Encodes and decodes audio data in PCM (Pulse Code Modulation) format.
+    /// Supports encoding/decoding with various bit depths and resampling.
+    /// </summary>
     public class PCMEncoder : IEncoder
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PCMEncoder"/> class.
+        /// </summary>
         [Preserve]
         public PCMEncoder() { }
 
@@ -41,6 +48,7 @@ namespace Utilities.Audio
             try
             {
                 encode = Encode(native, size, trim, silenceThreshold, inputSampleRate, outputSampleRate, Allocator.Persistent);
+
                 return encode.Value.ToArray();
             }
             finally
@@ -62,7 +70,14 @@ namespace Utilities.Audio
         /// <param name="allocator"></param>
         /// <returns>Byte array PCM data.</returns>
         [Preserve]
-        public static NativeArray<byte> Encode(NativeArray<float> samples, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, float silenceThreshold = 0.001f, int? inputSampleRate = null, int? outputSampleRate = null, Allocator allocator = Allocator.Temp)
+        public static NativeArray<byte> Encode(
+            NativeArray<float> samples,
+            PCMFormatSize size = PCMFormatSize.SixteenBit,
+            bool trim = false,
+            float silenceThreshold = 0.001f,
+            int? inputSampleRate = null,
+            int? outputSampleRate = null,
+            Allocator allocator = Allocator.Temp)
         {
             var disposeSamples = false;
 
@@ -89,6 +104,7 @@ namespace Utilities.Audio
                     if (math.abs(samples[i]) > silenceThreshold)
                     {
                         start = math.max(i - 1, 0);
+
                         break;
                     }
                 }
@@ -98,6 +114,7 @@ namespace Utilities.Audio
                     if (math.abs(samples[i]) > silenceThreshold)
                     {
                         end = i + 1;
+
                         break;
                     }
                 }
@@ -149,6 +166,7 @@ namespace Utilities.Audio
                         var stride = (int)(i - start);
                         output[stride] = (byte)sample;
                     }
+
                     break;
                 case PCMFormatSize.SixteenBit:
                     for (var i = (int)start; i < end; i++)
@@ -159,6 +177,7 @@ namespace Utilities.Audio
                         output[stride] = (byte)(sample & byte.MaxValue);
                         output[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
                     }
+
                     break;
                 case PCMFormatSize.TwentyFourBit:
                     for (var i = (int)start; i < end; i++)
@@ -170,6 +189,7 @@ namespace Utilities.Audio
                         output[stride + 1] = (byte)((sample >> 8) & byte.MaxValue);
                         output[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
                     }
+
                     break;
                 case PCMFormatSize.ThirtyTwoBit:
                     for (var i = (int)start; i < end; i++)
@@ -182,6 +202,7 @@ namespace Utilities.Audio
                         output[stride + 2] = (byte)((sample >> 16) & byte.MaxValue);
                         output[stride + 3] = (byte)((sample >> 24) & byte.MaxValue);
                     }
+
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(size), size, null);
@@ -195,8 +216,8 @@ namespace Utilities.Audio
         /// </summary>
         /// <param name="pcmData">PCM data to decode.</param>
         /// <param name="size">Size of PCM sample data.</param>
-        /// <param name="inputSampleRate"></param>
-        /// <param name="outputSampleRate"></param>
+        /// <param name="inputSampleRate">Optional input sample rate for resampling.</param>
+        /// <param name="outputSampleRate">Optional output sample rate for resampling.</param>
         /// <returns>Float array of samples.</returns>
         [Preserve]
 #if UNITY_6000_0_OR_NEWER
@@ -216,6 +237,7 @@ namespace Utilities.Audio
             try
             {
                 decode = Decode(native, size, inputSampleRate, outputSampleRate, Allocator.Persistent);
+
                 return decode.Value.ToArray();
             }
             finally
@@ -255,11 +277,13 @@ namespace Utilities.Audio
             {
                 case PCMFormatSize.EightBit:
                     const float scale = 1f / (1 << 7);
+
                     for (var i = 0; i < sampleCount; i++)
                     {
                         samples[sampleIndex] = pcmData[i] * scale - 1f;
                         sampleIndex++;
                     }
+
                     break;
                 case PCMFormatSize.SixteenBit:
                     for (var i = 0; i < sampleCount; i++)
@@ -269,6 +293,7 @@ namespace Utilities.Audio
                         samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
+
                     break;
                 case PCMFormatSize.TwentyFourBit:
                     for (var i = 0; i < sampleCount; i++)
@@ -279,6 +304,7 @@ namespace Utilities.Audio
                         samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
+
                     break;
                 case PCMFormatSize.ThirtyTwoBit:
                     for (var i = 0; i < pcmData.Length; i += 4)
@@ -288,6 +314,7 @@ namespace Utilities.Audio
                         samples[sampleIndex] = normalized;
                         sampleIndex++;
                     }
+
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(size), size, null);
@@ -320,7 +347,10 @@ namespace Utilities.Audio
         [Preserve]
         public static float[] Resample(float[] samples, int inputSampleRate, int outputSampleRate)
         {
-            if (inputSampleRate == outputSampleRate) { return samples; }
+            if (inputSampleRate == outputSampleRate)
+            {
+                return samples;
+            }
 
             NativeArray<float>? resample = null;
             var native = new NativeArray<float>(samples, Allocator.Persistent);
@@ -328,6 +358,7 @@ namespace Utilities.Audio
             try
             {
                 resample = Resample(native, inputSampleRate, outputSampleRate, Allocator.Persistent);
+
                 return resample.Value.ToArray();
             }
             finally
@@ -351,7 +382,10 @@ namespace Utilities.Audio
         [Preserve]
         public static NativeArray<float> Resample(NativeArray<float> samples, int inputSampleRate, int outputSampleRate, Allocator allocator = Allocator.Temp)
         {
-            if (inputSampleRate == outputSampleRate) { return samples; }
+            if (inputSampleRate == outputSampleRate)
+            {
+                return samples;
+            }
 
             var samplesLength = samples.Length;
             var ratio = outputSampleRate / (float)inputSampleRate;
@@ -399,6 +433,7 @@ namespace Utilities.Audio
                         break;
                     default:
                         Debug.LogException(e);
+
                         break;
                 }
             }
@@ -494,6 +529,7 @@ namespace Utilities.Audio
                             break;
                         default:
                             Debug.LogException(e);
+
                             break;
                     }
                 }
@@ -516,8 +552,9 @@ namespace Utilities.Audio
                 // Trim the final samples down into the recorded range.
                 var microphoneData = new float[totalSampleCount * clipData.Channels];
                 Array.Copy(finalSamples, microphoneData, microphoneData.Length);
-                await Awaiters.UnityMainThread; // switch back to main thread to call unity apis
-                                                // Create a new copy of the final recorded clip.
+                // switch back to main thread to call unity apis
+                await Awaiters.UnityMainThread;
+                // Create a new copy of the final recorded clip.
                 var newClip = AudioClip.Create(clipData.Name, microphoneData.Length, clipData.Channels, clipData.OutputSampleRate, false);
                 newClip.SetData(microphoneData, 0);
                 result = new Tuple<string, AudioClip>(outputPath, newClip);
@@ -532,6 +569,7 @@ namespace Utilities.Audio
                     Debug.Log($"[{nameof(RecordingManager)}] Finished processing...");
                 }
             }
+
             return result;
         }
 
@@ -665,6 +703,7 @@ namespace Utilities.Audio
                             shouldStop = true;
                         }
                     } while (!shouldStop);
+
                     return (finalSamples, sampleCount);
                 }
                 finally

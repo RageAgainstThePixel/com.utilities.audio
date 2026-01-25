@@ -5,6 +5,9 @@ using UnityEngine;
 
 namespace Utilities.Audio
 {
+    /// <summary>
+    /// Extension methods for <see cref="AudioClip"/> objects.
+    /// </summary>
     public static class AudioClipExtensions
     {
         /// <summary>
@@ -14,7 +17,7 @@ namespace Utilities.Audio
         /// <param name="size">Size of PCM sample data.</param>
         /// <param name="trim">Optional, trim the silence from the data.</param>
         /// <param name="outputSampleRate">The expected output sample rate of the audio clip.</param>
-        /// <param name="allocator"></param>
+        /// <param name="allocator">The allocator to use for the resulting byte array.</param>
         /// <returns>Byte array PCM data.</returns>
         public static NativeArray<byte> EncodeToPCM(this AudioClip audioClip, PCMFormatSize size = PCMFormatSize.SixteenBit, bool trim = false, int outputSampleRate = 44100, Allocator allocator = Allocator.Temp)
         {

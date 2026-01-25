@@ -5,7 +5,7 @@ using Unity.Collections;
 
 namespace Utilities.Audio.Tests
 {
-    internal static class TestUtilities
+    public static class TestUtilities
     {
         public static NativeArray<float> GenerateSineWaveSamples(double frequency, int sampleRate, float duration = 1f, float amplitude = 0.5f)
         {

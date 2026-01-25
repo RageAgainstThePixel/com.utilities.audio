@@ -19,6 +19,11 @@ namespace Utilities.Audio
     [RequireComponent(typeof(AudioSource))]
     public class StreamAudioSource : MonoBehaviour
     {
+        /// <summary>
+        /// Implicitly converts a <see cref="StreamAudioSource"/> to its attached <see cref="AudioSource"/>.
+        /// </summary>
+        /// <param name="streamAudioSource">The stream audio source component.</param>
+        /// <returns>The attached audio source.</returns>
         [Preserve]
         public static implicit operator AudioSource(StreamAudioSource streamAudioSource)
             => streamAudioSource.audioSource;
@@ -28,15 +33,40 @@ namespace Utilities.Audio
 
 #if !UNITY_2022_1_OR_NEWER
         private CancellationTokenSource lifetimeCancellationTokenSource = new();
+
         // ReSharper disable once InconsistentNaming
         private CancellationToken destroyCancellationToken => lifetimeCancellationTokenSource.Token;
 #endif // !UNITY_2022_1_OR_NEWER
 
         private NativeQueue<float> audioQueue;
 
-        private float[] resampleBuffer;
+        private void EnsureQueueInitialized()
+        {
+            if (!audioQueue.IsCreated)
+            {
+                audioQueue = new NativeQueue<float>(Allocator.Persistent);
+            }
+        }
 
-        public bool IsEmpty => audioQueue.Count == 0;
+        /// <summary>
+        /// Gets a value indicating whether the audio queue is empty.
+        /// </summary>
+        /// <remarks>
+        /// If the queue has not been initialized yet, this returns true.
+        /// </remarks>
+        public bool IsEmpty
+        {
+            get
+            {
+                // Lazy initialization in case accessed before Awake
+                if (!audioQueue.IsCreated)
+                {
+                    return true;
+                }
+
+                return audioQueue.Count == 0;
+            }
+        }
 
         private void OnValidate()
         {
@@ -48,7 +78,7 @@ namespace Utilities.Audio
 
         private void Awake()
         {
-            audioQueue = new NativeQueue<float>(Allocator.Persistent);
+            EnsureQueueInitialized();
             OnValidate();
 #if PLATFORM_WEBGL && !UNITY_EDITOR
             AudioPlaybackLoop();
@@ -100,6 +130,8 @@ namespace Utilities.Audio
                         }
                         else
                         {
+                            // Zero remaining buffer elements to prevent stale samples on underrun
+                            Array.Clear(buffer, i, bufferLength - i);
                             break;
                         }
                     }
@@ -123,11 +155,25 @@ namespace Utilities.Audio
             }
         }
 #else
+        /// <summary>
+        /// Processes audio samples for playback. Expects mono samples which are duplicated across all channels.
+        /// Buffers are zeroed at start of each frame to prevent stale samples on queue underrun.
+        /// </summary>
+        /// <param name="data">Audio buffer to fill. Will be cleared before filling to ensure silence on underrun.</param>
+        /// <param name="channels">Number of audio channels to fill (all channels receive the same mono sample).</param>
         private void OnAudioFilterRead(float[] data, int channels)
         {
             try
             {
                 var length = data.Length;
+
+                // Only attempt dequeue if queue has been initialized
+                if (!audioQueue.IsCreated)
+                {
+                    // Clear entire buffer if queue was never initialized
+                    Array.Clear(data, 0, length);
+                    return;
+                }
 
                 for (var i = 0; i < length; i += channels)
                 {
@@ -137,6 +183,12 @@ namespace Utilities.Audio
                         {
                             data[i + j] = sample;
                         }
+                    }
+                    else
+                    {
+                        // Break on first underrun and only clear remaining buffer elements
+                        Array.Clear(data, i, length - i);
+                        break;
                     }
                 }
             }
@@ -150,21 +202,54 @@ namespace Utilities.Audio
         private void OnDestroy()
         {
 #if !UNITY_2022_1_OR_NEWER
-            lifetimeCancellationTokenSource.Cancel();
+            if (lifetimeCancellationTokenSource is { IsCancellationRequested: false })
+            {
+                lifetimeCancellationTokenSource.Cancel();
+            }
 #endif // !UNITY_2022_1_OR_NEWER
-            audioQueue.Dispose();
+            // Properly dispose of the queue to release Persistent allocator memory
+            if (audioQueue.IsCreated)
+            {
+                audioQueue.Dispose();
+            }
         }
 
-        public void SampleCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
-            => SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(true);
+        /// <summary>
+        /// Asynchronously queues audio samples for playback. Exceptions are logged to debug output.
+        /// </summary>
+        /// <param name="samples">Array of audio samples to queue.</param>
+        /// <param name="count">Optional number of samples to queue. Defaults to array length.</param>
+        /// <param name="inputSampleRate">Optional input sample rate for resampling.</param>
+        /// <param name="outputSampleRate">Optional output sample rate for resampling.</param>
+        [UsedImplicitly]
+        public async void SampleCallback(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        {
+            try
+            {
+                await SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
 
-        public async Task SampleCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        /// <summary>
+        /// Asynchronously queues audio samples for playback with resampling support.
+        /// </summary>
+        /// <param name="samples">Array of audio samples to queue.</param>
+        /// <param name="count">Optional number of samples to queue. Defaults to array length.</param>
+        /// <param name="inputSampleRate">Optional input sample rate for resampling.</param>
+        /// <param name="outputSampleRate">Optional output sample rate for resampling.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        [UsedImplicitly]
+        public Task SampleCallbackAsync(float[] samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
             var native = new NativeArray<float>(samples, Allocator.Persistent);
 
             try
             {
-                await SampleCallbackAsync(native, count, inputSampleRate, outputSampleRate);
+                return SampleCallbackAsync(native, count, inputSampleRate, outputSampleRate);
             }
             finally
             {
@@ -172,40 +257,72 @@ namespace Utilities.Audio
             }
         }
 
+        /// <summary>
+        /// Asynchronously queues native audio samples for playback. Exceptions are logged to debug output.
+        /// </summary>
+        /// <param name="samples">Native array of audio samples to queue.</param>
+        /// <param name="count">Optional number of samples to queue. Defaults to array length.</param>
+        /// <param name="inputSampleRate">Optional input sample rate for resampling.</param>
+        /// <param name="outputSampleRate">Optional output sample rate for resampling.</param>
+        [UsedImplicitly]
         public async void SampleCallback(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
-            => await SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate).ConfigureAwait(true);
-
-        public async Task SampleCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
         {
-            NativeArray<float> native;
-
-            if (inputSampleRate.HasValue && outputSampleRate.HasValue && inputSampleRate != outputSampleRate)
-            {
-                native = PCMEncoder.Resample(samples, inputSampleRate.Value, outputSampleRate.Value, Allocator.Persistent);
-            }
-            else
-            {
-                native = new NativeArray<float>(samples, Allocator.Persistent);
-            }
-
             try
             {
-                await Enqueue(native, count ?? samples.Length);
+                await SampleCallbackAsync(samples, count, inputSampleRate, outputSampleRate);
             }
-            finally
+            catch (Exception e)
             {
-                native.Dispose();
+                Debug.LogException(e);
             }
-
         }
 
-        public async Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
+        /// <summary>
+        /// Asynchronously queues native audio samples for playback with resampling support.
+        /// </summary>
+        /// <param name="samples">Native array of audio samples to queue.</param>
+        /// <param name="count">Optional number of samples to queue. Defaults to array length.</param>
+        /// <param name="inputSampleRate">Optional input sample rate for resampling.</param>
+        /// <param name="outputSampleRate">Optional output sample rate for resampling.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        [UsedImplicitly]
+        public Task SampleCallbackAsync(NativeArray<float> samples, int? count = null, int? inputSampleRate = null, int? outputSampleRate = null)
+        {
+            if (inputSampleRate.HasValue &&
+                outputSampleRate.HasValue &&
+                inputSampleRate != outputSampleRate)
+            {
+                // Resampling required: create new NativeArray from resampler output
+                var resampled = PCMEncoder.Resample(samples, inputSampleRate.Value, outputSampleRate.Value, Allocator.Persistent);
+                try
+                {
+                    return Enqueue(resampled, count ?? resampled.Length);
+                }
+                finally
+                {
+                    resampled.Dispose();
+                }
+            }
+
+            // No resampling needed: enqueue directly without copying to maintain zero-allocation design
+            return Enqueue(samples, count ?? samples.Length);
+        }
+
+        /// <summary>
+        /// Asynchronously processes PCM buffer data for playback with resampling support.
+        /// </summary>
+        /// <param name="pcmData">Raw PCM byte data to process.</param>
+        /// <param name="inputSampleRate">The input sample rate of the PCM data.</param>
+        /// <param name="outputSampleRate">The desired output sample rate.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        [UsedImplicitly]
+        public Task BufferCallbackAsync(NativeArray<byte> pcmData, int inputSampleRate, int outputSampleRate)
         {
             var samples = PCMEncoder.Decode(pcmData, inputSampleRate: inputSampleRate, outputSampleRate: outputSampleRate, allocator: Allocator.Persistent);
 
             try
             {
-                await Enqueue(samples, samples.Length);
+                return Enqueue(samples, samples.Length);
             }
             finally
             {
@@ -213,18 +330,28 @@ namespace Utilities.Audio
             }
         }
 
-        private async Task Enqueue(NativeArray<float> samples, int count)
+        private Task Enqueue(NativeArray<float> samples, int count)
         {
+            EnsureQueueInitialized();
+
             for (var i = 0; i < count; i++)
             {
                 audioQueue.Enqueue(samples[i]);
             }
 
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Clears all queued audio samples.
+        /// </summary>
         [UsedImplicitly]
         public void ClearBuffer()
-            => audioQueue.Clear();
+        {
+            if (audioQueue.IsCreated)
+            {
+                audioQueue.Clear();
+            }
+        }
     }
 }
