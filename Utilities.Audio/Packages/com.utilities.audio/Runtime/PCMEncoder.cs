@@ -552,7 +552,8 @@ namespace Utilities.Audio
                 // Trim the final samples down into the recorded range.
                 var microphoneData = new float[totalSampleCount * clipData.Channels];
                 Array.Copy(finalSamples, microphoneData, microphoneData.Length);
-                await Awaiters.UnityMainThread; // switch back to main thread to call unity apis
+                // switch back to main thread to call unity apis
+                await Awaiters.UnityMainThread;
                 // Create a new copy of the final recorded clip.
                 var newClip = AudioClip.Create(clipData.Name, microphoneData.Length, clipData.Channels, clipData.OutputSampleRate, false);
                 newClip.SetData(microphoneData, 0);
@@ -688,8 +689,7 @@ namespace Utilities.Audio
 
                             if (RecordingManager.EnableDebug)
                             {
-                                Debug.Log(
-                                    $"[{nameof(RecordingManager)}] State: {nameof(RecordingManager.IsRecording)}? {RecordingManager.IsRecording} | Wrote {samplesToWrite} samples | last mic pos: {lastMicrophonePosition} | total samples: {sampleCount} | isCancelled? {cancellationToken.IsCancellationRequested}");
+                                Debug.Log($"[{nameof(RecordingManager)}] State: {nameof(RecordingManager.IsRecording)}? {RecordingManager.IsRecording} | Wrote {samplesToWrite} samples | last mic pos: {lastMicrophonePosition} | total samples: {sampleCount} | isCancelled? {cancellationToken.IsCancellationRequested}");
                             }
                         }
 
