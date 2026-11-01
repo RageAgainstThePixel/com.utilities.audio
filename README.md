@@ -8,6 +8,8 @@ A simple package for audio extensions and utilities in the [Unity](https://unity
 
 Requires Unity 2021.3 LTS or higher.
 
+CI tests the current Unity streams on pull requests, and a monthly run covers the older lines.
+
 The recommended installation method is though the unity package manager and [OpenUPM](https://openupm.com/packages/com.utilities.audio).
 
 ### Via Unity Package Manager and OpenUPM
